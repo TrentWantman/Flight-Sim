@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <unordered_set>
 using namespace std;
 
 class RingBuffer{
@@ -45,6 +46,56 @@ public:
         return temp;
     }
     
+};
+
+class LaunchSequence{
+public:
+    enum State {IDLE, PRELAUNCH, IGNITION, LIFTOFF, MAX_Q, MECO, LANDING, SAFED, ABORT};
+    State currentState;
+    unordered_map<int, unordered_set<int>> transitions;
+
+    LaunchSequence() {
+        transitions[IDLE] = {PRELAUNCH, ABORT};
+        transitions[PRELAUNCH] = {IGNITION, ABORT};
+        transitions[IGNITION] = {LIFTOFF, ABORT};
+        transitions[LIFTOFF] = {MAX_Q, ABORT};
+        transitions[MAX_Q] = {MECO, ABORT};
+        transitions[MECO] = {LANDING, ABORT};
+        transitions[LANDING] = {SAFED, ABORT};
+        transitions[SAFED] = {ABORT};
+        transitions[ABORT] = {};
+        currentState = IDLE;
+    }
+
+    void transition(State nextState){
+        if (transitions[currentState].count(nextState)){
+            string prevState = stateName(currentState);
+            currentState = nextState;
+            cout << "SUCCESS: State transitioned - " << prevState << " -> " << stateName(currentState) << endl; 
+        }
+        else{
+            cout << "ERROR: Not a valid state transition - " << stateName(currentState) << " -> " << stateName(nextState) << endl; 
+        }
+    }
+
+    string stateName(State s){
+        switch (s) {
+            case IDLE : return "IDLE";
+            case PRELAUNCH : return "PRELAUNCH";
+            case IGNITION : return "IGNITION";
+            case LIFTOFF : return "LIFTOFF";
+            case MAX_Q : return "MAX_Q";
+            case MECO : return "MECO";
+            case LANDING : return "LANDING";
+            case SAFED : return "SAFED";
+            case ABORT : return "ABORT";
+            default: return "UKNOWN";
+        }
+    }
+
+    string getState(){
+        return stateName(currentState);
+    }
 };
 
 class SensorUnit {
@@ -136,9 +187,19 @@ public:
         auto start = startAllCycles;
         SensorUnit sensors("SU-10-ALT");
         thread sensorThread(&SensorUnit::run, &sensors);
+        LaunchSequence ls;
+        ls.transition(ls.PRELAUNCH);
+        ls.transition(ls.IGNITION);
+        ls.transition(ls.LIFTOFF);
 
         for (int i = 0; i < 50; i++){
             double alt = sensors.getLatestVote();
+            if(ls.getState() == "LIFTOFF"){
+                if(alt >= 1200.0) { ls.transition(ls.MAX_Q);}
+            }
+            else if(ls.getState() == "MAX_Q"){
+                if(alt >= 1500.0) { ls.transition(ls.MECO);}
+            }
 
             this_thread::sleep_for(10ms);
             auto end = chrono::steady_clock::now();
@@ -152,7 +213,7 @@ public:
                     // spin burns CPU but guarantees precision
                 }
                 auto totalCycle = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - start);
-                cout << "Cycle " << i << ": work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << " Altitude: " << alt << "ft" << endl;
+                cout << "Cycle " << i << ": State=" << ls.getState() <<  " Altitude: " << alt << "ft" << "work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << endl;
             }
             start = chrono::steady_clock::now();
         }
