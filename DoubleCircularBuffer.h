@@ -6,15 +6,15 @@
 class DoubleCircularBuffer{
 public:
     static const int CAPACITY = 64;
-    double bufferA[CAPACITY] = {};
-    double bufferB[CAPACITY] = {};
-    double* writer = bufferA;
-    double* reader = bufferB;
+    float bufferA[CAPACITY] = {};
+    float bufferB[CAPACITY] = {};
+    float* writer = bufferA;
+    float* reader = bufferB;
     int writeHead = 0;
     int readHead = 0;
     int writeCount = 0;
     
-    bool read(double& out){
+    bool read(float& out){
         if(readHead >= writeCount){
             return false;
         }
@@ -23,7 +23,7 @@ public:
         return true;
     }
 
-    bool write(double val){
+    bool write(float val){
         if(writeHead >= CAPACITY){
             return false;
         }

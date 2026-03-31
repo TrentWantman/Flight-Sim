@@ -12,25 +12,25 @@ class SensorUnit {
 public:
     std::string name;
     RingBuffer buffer;
-    double s1_, s2_, s3_;
+    float s1_, s2_, s3_;
     bool faulted = false;
     bool stopped = false;
-    double latestVote_;
+    float latestVote_;
     std::mutex mtx_;
 
     SensorUnit(const std::string& name) : name(name), buffer(10),  faulted(false), latestVote_(0.0) {}
 
-    double noise() {
+    float noise() {
         return ((rand() % 100) - 50) * 0.01;
     }
 
-    double update(double s1, double s2, double s3){
+    float update(float s1, float s2, float s3){
         s1_ = s1; s2_ = s2; s3_ = s3;
         return vote();
     }
 
-    double vote(){
-        double vote;
+    float vote(){
+        float vote;
         bool oneTwo = abs(s1_ - s2_) <= 0.5;
         bool oneThree = abs(s1_ - s3_) <= 0.5;
         bool twoThree = abs(s2_ - s3_) <= 0.5;
@@ -57,7 +57,7 @@ public:
     void run() {
         int cycle = 0;
         while (!stopped) {
-            double base = 1000.0 + cycle * 10.0;
+            float base = 1000.0 + cycle * 10.0;
         {
             std::lock_guard<std::mutex> lock(mtx_);
             latestVote_ = update(base + noise(), base + noise(), base + noise());
@@ -67,7 +67,7 @@ public:
         }
     }
 
-    double getLatestVote() {
+    float getLatestVote() {
         std::lock_guard<std::mutex> lock(mtx_);
         return latestVote_;
     }

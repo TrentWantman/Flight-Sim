@@ -22,7 +22,7 @@ public:
         ls.transition(ls.LIFTOFF);
 
         for (int i = 0; i < 50; i++){
-            double alt = sensors.getLatestVote();
+            float alt = sensors.getLatestVote();
             if(ls.getState() == "LIFTOFF"){
                 if(alt >= 1200.0) { ls.transition(ls.MAX_Q);}
             }
