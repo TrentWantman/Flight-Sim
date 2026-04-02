@@ -1,6 +1,7 @@
 #ifndef SENSORUNIT_H
 #define SENSORUNIT_H
 
+#include "PhysicsModel.h"
 #include "DoubleCircularBuffer.h"
 #include <thread>
 #include <iostream>
@@ -9,16 +10,27 @@
 #include <cstdlib>
 
 class SensorUnit {
+private:
+    PhysicsModel& model;
+    float dt = 0.1f;
+
 public:
     std::string name;
+    int sensortype;
+
     DoubleCircularBuffer& buffer;
     float s1_, s2_, s3_;
+    bool s1_faulted = false;
+    bool s2_faulted = false;
+    bool s3_faulted = false;
     bool faulted = false;
-    bool stopped = false;
     float latestVote_;
+
+    bool stopped = false;
+
     std::mutex mtx_;
 
-    SensorUnit(const std::string& name_, DoubleCircularBuffer& buffer_) : name(name_), buffer(buffer_),  faulted(false), latestVote_(0.0) {}
+    SensorUnit(const std::string& name_, DoubleCircularBuffer& buffer_, PhysicsModel& model_, int sensortype_) : name(name_), buffer(buffer_),  faulted(false), latestVote_(0.0), model(model_), sensortype(sensortype_) {}
 
     float noise() {
         return ((rand() % 100) - 50) * 0.01;
@@ -39,31 +51,36 @@ public:
             vote = (s1_ + s2_ + s3_) / 3;
         }
         else if (totalAgree > 0){
-            if (oneTwo) {vote = (s1_ + s2_) / 2;}
-            else if (oneThree) {vote = (s1_ + s3_) / 2;}
-            else if (twoThree) {vote = (s2_ + s3_) / 2;}
+            if (oneTwo) {vote = (s1_ + s2_) / 2; s3_faulted = true;}
+            else if (oneThree) {vote = (s1_ + s3_) / 2; s2_faulted = true;}
+            else if (twoThree) {vote = (s2_ + s3_) / 2; s1_faulted = true;}
         }
         else{
             faulted = true;
             std::cout << "WARNING: Sensor Unit Is Faulty: sensor 1: " << s1_ << " sensor 2: " << s2_ << " sensor 3: " << s3_ << std::endl;
             return -999999.9;
         }
-        buffer.write(vote);
         return vote;
     }
-
-    bool isFaulted() {return faulted;}
 
     void run() {
         int cycle = 0;
         while (!stopped) {
-            float base;
-            if (!buffer.read(base)){
-                continue;
+            model.Update(dt);
+            float value;
+            if(sensortype == 0){
+                value = model.GetPosition().getZ();
             }
+            else{
+                value = model.GetVelocity().getZ();
+
+            }
+            
         {
             std::lock_guard<std::mutex> lock(mtx_);
-            latestVote_ = update(base + noise(), base + noise(), base + noise());
+            latestVote_ = update(value + noise(), value + noise(), value + noise());
+            buffer.write(latestVote_);
+            buffer.swapBuffers();
         }
             cycle++;
             std::this_thread::sleep_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(50));
