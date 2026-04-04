@@ -17,27 +17,31 @@ int main() {
     identityMatrix.Print();
     cout << '\n' << endl;
 
-    Mat3x3 rotatedX = identityMatrix.RotateX(180);
+    Mat3x3 rotatedX = Mat3x3::RotateX(180);
     rotatedX.Print();
-    
-    Vec3 testVecX (1,0,0);
-    Vec3 testVecY (0,1,0);
-    Vec3 testVecZ (0,0,1);
-    Vec3 testVecXYZ (1, 1, 1);
+    cout << '\n' << endl;
+    printf("Determinant: %f\n", rotatedX.Determinant());
+    cout << '\n' << endl;
 
-    testVecX = rotatedX.Multiply(testVecX);
-    testVecY = rotatedX.Multiply(testVecY);
-    testVecZ = rotatedX.Multiply(testVecZ);
-    testVecXYZ = rotatedX.Multiply(testVecXYZ);
-    
+    Mat3x3 rotX = Mat3x3::RotateX(90);
+    Mat3x3 rotY = Mat3x3::RotateY(90);
+    Mat3x3 combined = rotY.Multiply(rotX);
+    combined.Print();
     cout << '\n' << endl;
-    testVecX.Print();
+
+
+    Vec3 v(1, 0, 0);
+
+    // Step by step
+    Vec3 step1 = rotX.Multiply(v);
+    Vec3 step2 = rotY.Multiply(step1);
+    step2.Print();
     cout << '\n' << endl;
-    testVecY.Print();
-    cout << '\n' << endl;
-    testVecZ.Print();
-    cout << '\n' << endl;
-    testVecXYZ.Print();
+
+
+    // Combined
+    Vec3 combined_result = combined.Multiply(v);
+    combined_result.Print();
     cout << '\n' << endl;
 
     return 0;
