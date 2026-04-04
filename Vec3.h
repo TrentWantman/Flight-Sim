@@ -11,7 +11,7 @@ private:
     float z;
 public:
 
-    void print() const {
+    void Print() const {
         printf("(%f, %f, %f)\n", x, y, z);
     }
 

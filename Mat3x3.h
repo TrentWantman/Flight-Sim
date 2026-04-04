@@ -79,7 +79,7 @@ public:
         );
     }
 
-    void print(){
+    void Print(){
         printf("%f %f %f\n", m[0], m[1], m[2]);
         printf("%f %f %f\n", m[3], m[4], m[5]);
         printf("%f %f %f\n", m[6], m[7], m[8]);
