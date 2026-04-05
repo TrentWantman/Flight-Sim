@@ -43,6 +43,7 @@ public:
         (orientation * forward).Print();
         printf("Orientation:\n");
         orientation.Print();
+        printf("\n");
     }
 };
 
