@@ -1,7 +1,10 @@
+#ifndef ROCKET_H
+#define ROCKET_H
+
 #include "Mat3x3.h"
 #include "Engine.h"
 
-class Rocket{
+class Rocket {
 private:
     Mat3x3 orientation;
     float mass;
@@ -11,17 +14,22 @@ private:
     Engine engine;
 
 public:
-    Rocket() : orientation(), mass(1000.0f), forward(0,0,1), position(0,0,0), velocity(0,0,0), engine() {};
-    void Update(Vec3 externalForces, float dt);
-    void Rotate(Mat3x3 rotation);
-    
+    Rocket() : orientation(), mass(5000000.0f), forward(0,0,1), position(0,0,0), velocity(0,0,0), engine() {}
+
     void Update(Vec3 externalForces, float dt) {
         Vec3 thrustDirection = orientation * forward;
-        Vec3 thrustForce = forward * engine.GetThrust();
+        Vec3 thrustForce = thrustDirection * engine.GetThrust();
         Vec3 acceleration = (thrustForce + externalForces) * (1.0f / mass);
         velocity = velocity + acceleration * dt;
         position = position + velocity * dt;
     }
+
+    void Rotate(const Mat3x3& rotation) {
+        orientation = rotation * orientation;
+    }
+
+    void SetThrottle(float t) { engine.SetThrottle(t); }
+    float GetMass() const { return mass; }
 
     void Print() const {
         printf("Rocket State\n");
@@ -37,3 +45,5 @@ public:
         orientation.Print();
     }
 };
+
+#endif
