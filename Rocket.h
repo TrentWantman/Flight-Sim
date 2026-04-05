@@ -21,6 +21,10 @@ private:
 
 public:
     Rocket(Engine& engine_) : orientation(), mass(5000000.0f), forward(0,0,1), position(0,0,0), velocity(0,0,0), engine(engine_) {}
+    
+    Rocket(Engine& eng, float startAlt, float startVel) 
+    : orientation(), mass(5000000.0f), forward(0,0,1), 
+      position(0,0,startAlt), velocity(0,0,startVel), engine(eng) {}
 
     void Update(Vec3 externalForces, float dt) {
         engine.ReadCommands();
