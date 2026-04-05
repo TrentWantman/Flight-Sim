@@ -7,6 +7,8 @@
 
 class Rocket {
 private:
+    const float DRAG_COEFF = 0.3;
+    const float AREA = 70;
     float dryMass;
     Mat3x3 orientation;
     Vec3 forward;
@@ -46,6 +48,10 @@ public:
             }
         }
     }
+
+    float GetDragCoef() const { return DRAG_COEFF; }
+
+    float GetArea() const { return AREA; }
 
     float GetMass() const { return dryMass + fuelTank.GetFuel(); }
 

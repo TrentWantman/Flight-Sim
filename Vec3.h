@@ -21,6 +21,7 @@ public:
 
     Vec3 Normalize() const {
         float magnitude = Magnitude();
+        if (magnitude < 0.001f) return Vec3(0, 0, 0);
         return Vec3((x / magnitude), (y / magnitude), (z / magnitude));
     }
 
