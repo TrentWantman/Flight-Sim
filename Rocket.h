@@ -29,6 +29,13 @@ public:
         Vec3 acceleration = (thrustForce + externalForces) * (1.0f / mass);
         velocity = velocity + acceleration * dt;
         position = position + velocity * dt;
+
+        if (position.getZ() <= 0.0f) {
+            position = Vec3(position.getX(), position.getY(), 0.0f);
+            if (velocity.getZ() < 0.0f) {
+                velocity = Vec3(velocity.getX(), velocity.getY(), 0.0f);
+            }
+        }
     }
 
     float GetMass() const { return mass; }

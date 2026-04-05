@@ -47,7 +47,7 @@ public:
         ls.transition(ls.IGNITION);
         ls.transition(ls.LIFTOFF);
 
-        setThrottle(0.21f);
+        setThrottle(0.95f);
 
         int cycle = 0;
 
@@ -81,10 +81,10 @@ public:
                     setThrottle(0.0f);
                 }
                 else if (velocity < -5.0f) {
-                    setThrottle(0.29f);
+                    setThrottle(0.95f);
                 }
                 else {
-                    setThrottle(0.14f);
+                    setThrottle(0.72f);
                 }
             }
 
@@ -108,6 +108,7 @@ public:
         }
 
         std::cout << "All Cycles total=" << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startAllCycles).count() << "ms" << std::endl;
+        stopped = true;
     }
 };
 

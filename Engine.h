@@ -1,3 +1,6 @@
+#ifndef ENGINE_H
+#define ENGINE_H
+
 #include "DoubleCircularBuffer.h"
 
 class Engine
@@ -48,3 +51,4 @@ public:
 
 };
 
+#endif
