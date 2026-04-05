@@ -4,10 +4,12 @@
 #include "LaunchSequence.h"
 #include "DoubleCircularBuffer.h"
 #include "PID.h"
+#include "WebSocketServer.h"
 #include <chrono>
 #include <thread>
 #include <iostream>
 #include <algorithm>
+#include <sstream>
 
 
 class FlightComputer {
@@ -19,6 +21,7 @@ private:
     LaunchSequence ls;
     static constexpr float dt = 0.1f;
     PID landingPID;
+    WebSocketServer* wsServer = nullptr;
 
 
 public:
@@ -28,9 +31,11 @@ public:
         : altBuffer(alt), velBuffer(vel), commandBuffer(cmd), massBuffer(mass), landingPID(0.02f, 0.0f, 0.0f) {}
 
     FlightComputer(DoubleCircularBuffer& alt, DoubleCircularBuffer& vel, DoubleCircularBuffer& cmd, DoubleCircularBuffer& mass, LaunchSequence::State startState)
-        : altBuffer(alt), velBuffer(vel), commandBuffer(cmd), massBuffer(mass), landingPID(0.02f, 0.0f, 0.0f) { 
+        : altBuffer(alt), velBuffer(vel), commandBuffer(cmd), massBuffer(mass), landingPID(0.02f, 0.0f, 0.0f) {
             ls.setState(startState);
         }
+
+    void setWebSocketServer(WebSocketServer* s) { wsServer = s; }
 
     void setThrottle(float throttle) {
         commandBuffer.write(throttle);
@@ -124,6 +129,17 @@ public:
                     << " Throttle: " << commandBuffer.reader[0]
                     << " Mass: " << mass
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
+
+                if (wsServer) {
+                    std::ostringstream js;
+                    js << "{\"cycle\":" << cycle
+                       << ",\"state\":\"" << ls.getState() << "\""
+                       << ",\"altitude\":" << alt
+                       << ",\"velocity\":" << velocity
+                       << ",\"throttle\":" << commandBuffer.reader[0]
+                       << ",\"mass\":" << mass << "}";
+                    wsServer->broadcast(js.str());
+                }
             }
 
             start = std::chrono::steady_clock::now();

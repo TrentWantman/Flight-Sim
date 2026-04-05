@@ -6,10 +6,18 @@
 #include "Engine.h"
 #include "Vec3.h"
 #include "Mat3x3.h"
+#include "WebSocketServer.h"
 
 using namespace std;
 
 int main() {
+    WebSocketServer wsServer;
+    if (!wsServer.start(9002)) {
+        std::cerr << "Warning: failed to start WebSocket server on port 9002" << std::endl;
+    } else {
+        std::cout << "WebSocket server listening on port 9002" << std::endl;
+    }
+
     World world;
     DoubleCircularBuffer velocityBuffer;
     DoubleCircularBuffer altitudeBuffer;
@@ -22,6 +30,7 @@ int main() {
     SensorUnit velocitySensors("SU-10-VEL", velocityBuffer, rocket, 1);
     SensorUnit massSensor("SU-10-FUEL", massBuffer, rocket, 2);
     FlightComputer fc(altitudeBuffer, velocityBuffer, engineCommandBuffer, massBuffer);
+    fc.setWebSocketServer(&wsServer);
 
     //Meco->Landing Test
     // Rocket rocket(engineCommandBuffer, 0.004f, 12000000, 1202.78f, 91.5942f);
@@ -50,6 +59,8 @@ int main() {
     velThread.join();
     massThread.join();
     fcThread.join();
-        
+
+    wsServer.stop();
+
     return 0;
 }
