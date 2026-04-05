@@ -17,18 +17,18 @@ int main() {
     DoubleCircularBuffer massBuffer;
 
     //Full Launch Test
-    Rocket rocket(engineCommandBuffer);
-    SensorUnit altitudeSensors("SU-10-ALT", altitudeBuffer, rocket, 0);
-    SensorUnit velocitySensors("SU-10-VEL", velocityBuffer, rocket, 1);
-    SensorUnit massSensor("SU-10-FUEL", massBuffer, rocket, 2);
-    FlightComputer fc(altitudeBuffer, velocityBuffer, engineCommandBuffer, massBuffer);
-
-    //Meco->Landing Test
-    // Rocket rocket(engineCommandBuffer, 0.004f, 12000000, 1202.78f, 91.5942f);
+    // Rocket rocket(engineCommandBuffer);
     // SensorUnit altitudeSensors("SU-10-ALT", altitudeBuffer, rocket, 0);
     // SensorUnit velocitySensors("SU-10-VEL", velocityBuffer, rocket, 1);
     // SensorUnit massSensor("SU-10-FUEL", massBuffer, rocket, 2);
-    // FlightComputer fc(altitudeBuffer, velocityBuffer, engineCommandBuffer, massBuffer, LaunchSequence::MAX_Q);
+    // FlightComputer fc(altitudeBuffer, velocityBuffer, engineCommandBuffer, massBuffer);
+
+    //Meco->Landing Test
+    Rocket rocket(engineCommandBuffer, 0.0f, 3294760.0f, 1418.07f, -81.4478f);
+    SensorUnit altitudeSensors("SU-10-ALT", altitudeBuffer, rocket, 0);
+    SensorUnit velocitySensors("SU-10-VEL", velocityBuffer, rocket, 1);
+    SensorUnit massSensor("SU-10-FUEL", massBuffer, rocket, 2);
+    FlightComputer fc(altitudeBuffer, velocityBuffer, engineCommandBuffer, massBuffer, LaunchSequence::MECO);
 
     std::thread altThread(&SensorUnit::run, &altitudeSensors);
     std::thread velThread(&SensorUnit::run, &velocitySensors);
