@@ -11,7 +11,7 @@ private:
     Vec3 forward;
     Vec3 position;
     Vec3 velocity;
-    Engine engine;
+    Engine& engine;
 
     void Rotate(const Mat3x3& rotation) {
         orientation = rotation * orientation;
@@ -20,9 +20,10 @@ private:
     void SetThrottle(float t) { engine.SetThrottle(t); }
 
 public:
-    Rocket() : orientation(), mass(5000000.0f), forward(0,0,1), position(0,0,0), velocity(0,0,0), engine() {}
+    Rocket(Engine& engine_) : orientation(), mass(5000000.0f), forward(0,0,1), position(0,0,0), velocity(0,0,0), engine(engine_) {}
 
     void Update(Vec3 externalForces, float dt) {
+        engine.ReadCommands();
         Vec3 thrustDirection = orientation * forward;
         Vec3 thrustForce = thrustDirection * engine.GetThrust();
         Vec3 acceleration = (thrustForce + externalForces) * (1.0f / mass);
@@ -33,7 +34,7 @@ public:
     float GetMass() const { return mass; }
 
     Vec3 GetPosition() const { return position; }
-    
+
     Vec3 GetVelocity() const { return velocity; }
 
     void Print() const {

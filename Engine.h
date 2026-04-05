@@ -1,13 +1,16 @@
+#include "DoubleCircularBuffer.h"
+
 class Engine
 {
 private:
 
     const float maxThrust = 70000000;
     float throttle;
+    DoubleCircularBuffer& buffer;
 
 public:
 
-    Engine() : throttle(0.f){}
+    Engine(DoubleCircularBuffer& buffer_) : buffer(buffer_), throttle(0.f){}
 
     void SetThrottle(float t){
         if (t >= 1.0f){
@@ -30,6 +33,13 @@ public:
         }
         else{
             throttle = thrust / maxThrust;
+        }
+    }
+
+    void ReadCommands() {
+        float cmd;
+        if (buffer.read(cmd)) {
+            SetThrottle(cmd);
         }
     }
 
