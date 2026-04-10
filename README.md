@@ -23,3 +23,5 @@ I'm using this project to learn / implement the concepts that aerospace and flig
 - Coordinate frames: Earth-centered inertial, body-fixed, local orbital frames
 - Guidance, Navigation, and Control (GNC): autonomous mission execution
 - HOOTL architecture: hardware-out-of-the-loop simulation
+
+Huge shoutout to Alfonso Gonzalez - Astrodynamics & SE Podcast on youtube for providing extremely well presented lectures on many of these concepts. As well as Daft Punk for creating the music I have been listening to while working on this.
