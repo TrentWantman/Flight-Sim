@@ -5,47 +5,51 @@
 #include "Engine.h"
 #include "Vec3.h"
 #include "Mat3x3.h"
+#include "IMUSensor.h"
+#include "GPSSensor.h"
+#include "FuelSensor.h"
 
 using namespace std;
 
 int main() {
     World world;
     Bus bus;
-        
+
     // Full Launch Test
     Rocket rocket(bus);
-    // SensorUnit altitudeSensors("SU-10-ALT", bus, rocket, 0);
-    // SensorUnit velocitySensors("SU-10-VEL", bus, rocket, 1);
-    // SensorUnit massSensor("SU-10-FUEL", bus, rocket, 2);
+    IMUSensor imu("IMU-1", bus, rocket);
+    GPSSensor gps("GPS-1", bus, rocket);
+    FuelSensor fuel("FUEL-1", bus, rocket);
     FlightComputer fc(bus);
 
-    //Meco->Landing Test
-    // Rocket rocket(bus, 0.0f, 3294760.0f, 1418.07f, -81.4478f);
-    // SensorUnit altitudeSensors("SU-10-ALT", bus, rocket, 0);
-    // SensorUnit velocitySensors("SU-10-VEL", bus, rocket, 1);
-    // SensorUnit massSensor("SU-10-FUEL", bus, rocket, 2);
+    // MECO->Landing Test
+    // Rocket rocket(bus, 0.0f, 3294760.0f, Vec3(0,0,1418.07f), Vec3(0,0,-81.4478f));
+    // IMUSensor imu("IMU-1", bus, rocket);
+    // GPSSensor gps("GPS-1", bus, rocket);
+    // FuelSensor fuel("FUEL-1", bus, rocket);
     // FlightComputer fc(bus, LaunchSequence::MECO);
 
-    // std::thread altThread(&SensorUnit::run, &altitudeSensors);
-    // std::thread velThread(&SensorUnit::run, &velocitySensors);
-    // std::thread massThread(&SensorUnit::run, &massSensor);
+    std::thread imuThread(&IMUSensor::run, &imu);
+    std::thread gpsThread(&GPSSensor::run, &gps);
+    std::thread fuelThread(&FuelSensor::run, &fuel);
     std::thread fcThread(&FlightComputer::run, &fc);
-
 
     int count = 0;
     while (!fc.stopped) {
-        count ++;
+        count++;
         Vec3 forces = world.ComputeForces(rocket);
         rocket.Update(forces, 0.001f);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    // altitudeSensors.stopped = true;
-    // velocitySensors.stopped = true;
-    // altThread.join();
-    // velThread.join();
-    // massThread.join();
+    imu.stopped = true;
+    gps.stopped = true;
+    fuel.stopped = true;
+
+    imuThread.join();
+    gpsThread.join();
+    fuelThread.join();
     fcThread.join();
-        
+
     return 0;
 }
