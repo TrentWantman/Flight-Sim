@@ -18,6 +18,7 @@ private:
     Vec3 forward;
     Vec3 position;
     Vec3 velocity;
+    Vec3 acceleration;
     FuelTank fuelTank;
     Engine engine;
 
@@ -54,12 +55,12 @@ private:
 public:
     Rocket(Bus& bus_) 
         : orientation(), dryMass(1200000.0f), forward(0,0,1), 
-          position(0,0,0), velocity(0,0,0), 
+          position(0,0,0), velocity(0,0,0), acceleration (0,0,0),
           fuelTank(), bus(bus_), engine(bus_, fuelTank) {}
     
-    Rocket(Bus& bus_, float throttle_, float fuel_, float startAlt, float startVel) 
+    Rocket(Bus& bus_, float throttle_, float fuel_, vector<float> startPos = {0,0,0}, vector<float> startVel = {0,0,0}, vector<float> startAccel = {0,0,0}) 
     : orientation(), dryMass(1200000.0f), forward(0,0,1), 
-      position(0,0,startAlt), velocity(0,0,startVel), fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_) {}
+      position(startPos[0],startPos[1],startPos[2]), velocity(startVel[0],startVel[1],startVel[2]), acceleration (startAccel[0],startAccel[1],startAccel[2]), fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_) {}
 
     void Update(Vec3 externalForces, float dt) {
         engine.Update(dt);
@@ -72,7 +73,7 @@ public:
 
         Vec3 thrustDirection = orientation * forward;
         Vec3 thrustForce = thrustDirection * engine.GetThrust();
-        Vec3 acceleration = (thrustForce + externalForces) * (1.0f / (dryMass + fuelTank.GetFuel()));
+        acceleration = (thrustForce + externalForces) * (1.0f / (dryMass + fuelTank.GetFuel()));
         velocity = velocity + acceleration * dt;
         position = position + velocity * dt;
 
@@ -95,6 +96,9 @@ public:
     Vec3 GetPosition() const { return position; }
 
     Vec3 GetVelocity() const { return velocity; }
+
+    Vec3 GetAcceleration() const { return acceleration; }
+
 
     void Print() const {
         printf("Rocket State\n");
