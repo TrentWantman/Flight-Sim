@@ -4,6 +4,7 @@
 #include "Mat3x3.h"
 #include "Engine.h"
 #include "FuelTank.h"
+#include "Bus.h"
 
 class Rocket {
 private:
@@ -16,6 +17,7 @@ private:
     Vec3 velocity;
     FuelTank fuelTank;
     Engine engine;
+    Bus& bus;
 
     void Rotate(const Mat3x3& rotation) {
         orientation = rotation * orientation;
@@ -24,14 +26,14 @@ private:
     void SetThrottle(float t) { engine.SetThrottle(t); }
 
 public:
-    Rocket(DoubleCircularBuffer& cmdBuffer) 
+    Rocket(Bus& bus_) 
         : orientation(), dryMass(1200000.0f), forward(0,0,1), 
           position(0,0,0), velocity(0,0,0), 
-          fuelTank(), engine(cmdBuffer, fuelTank) {}
+          fuelTank(), bus(bus_), engine(bus, fuelTank) {}
     
-    Rocket(DoubleCircularBuffer& cmdBuffer, float throttle_, float fuel_, float startAlt, float startVel) 
+    Rocket(Bus& bus_, float throttle_, float fuel_, float startAlt, float startVel) 
     : orientation(), dryMass(1200000.0f), forward(0,0,1), 
-      position(0,0,startAlt), velocity(0,0,startVel), fuelTank(fuel_), engine(cmdBuffer, fuelTank, throttle_) {}
+      position(0,0,startAlt), velocity(0,0,startVel), fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_) {}
 
     void Update(Vec3 externalForces, float dt) {
         engine.Update(dt);

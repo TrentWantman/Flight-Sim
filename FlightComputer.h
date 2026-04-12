@@ -12,10 +12,7 @@
 
 class FlightComputer {
 private:
-    DoubleCircularBuffer& altBuffer;
-    DoubleCircularBuffer& velBuffer;
-    DoubleCircularBuffer& commandBuffer;
-    DoubleCircularBuffer& massBuffer;
+    Bus& bus;
     LaunchSequence ls;
     static constexpr float dt = 0.1f;
     PID landingPID;
@@ -24,34 +21,34 @@ private:
 public:
     bool stopped = false;
 
-    FlightComputer(DoubleCircularBuffer& alt, DoubleCircularBuffer& vel, DoubleCircularBuffer& cmd, DoubleCircularBuffer& mass)
-        : altBuffer(alt), velBuffer(vel), commandBuffer(cmd), massBuffer(mass), landingPID(0.02f, 0.0f, 0.0f) {}
+    FlightComputer(Bus& bus_)
+        : bus(bus_), landingPID(0.02f, 0.0f, 0.0f) {}
 
-    FlightComputer(DoubleCircularBuffer& alt, DoubleCircularBuffer& vel, DoubleCircularBuffer& cmd, DoubleCircularBuffer& mass, LaunchSequence::State startState)
-        : altBuffer(alt), velBuffer(vel), commandBuffer(cmd), massBuffer(mass), landingPID(0.02f, 0.0f, 0.0f) { 
+    FlightComputer(Bus& bus_, LaunchSequence::State startState)
+        : bus(bus_), landingPID(0.02f, 0.0f, 0.0f) { 
             ls.setState(startState);
         }
 
     void setThrottle(float throttle) {
-        commandBuffer.write(throttle);
-        commandBuffer.swapBuffers();
+        bus.throttleChannel.write(throttle);
+        bus.throttleChannel.swapBuffers();
     }
 
     float readAltitude() {
         float val;
-        if (altBuffer.read(val)) return val;
+        if (bus.altitudeChannel.read(val)) return val;
         return 0.0f;
     }
 
     float readVelocity() {
         float val;
-        if (velBuffer.read(val)) return val;
+        if (bus.velocityChannel.read(val)) return val;
         return 0.0f;
     }
 
     float readMass() {
         float val;
-        if (massBuffer.read(val)) return val;
+        if (bus.massChannel.read(val)) return val;
         return 0.0f;
     }
 
@@ -121,7 +118,7 @@ public:
                 std::cout << "Cycle " << cycle << ": State=" << ls.getState()
                     << " Altitude: " << alt << "ft"
                     << " Velocity: " << velocity << "ft/sec"
-                    << " Throttle: " << commandBuffer.reader[0]
+                    << " Throttle: " << bus.throttleChannel.reader[0]
                     << " Mass: " << mass
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
             }
