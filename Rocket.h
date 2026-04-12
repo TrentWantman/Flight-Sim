@@ -5,25 +5,51 @@
 #include "Engine.h"
 #include "FuelTank.h"
 #include "Bus.h"
+#include "AttitudeMode.h"
 
 class Rocket {
 private:
-    const float DRAG_COEFF = 0.3;
+    Bus& bus;
+    const float DRAG_COEFF = 0.3; //fix with real drag coefficent class later on? 
     const float AREA = 70;
     float dryMass;
+    AttitudeMode currentMode = ATTITUDE_HOLD;
     Mat3x3 orientation;
     Vec3 forward;
     Vec3 position;
     Vec3 velocity;
     FuelTank fuelTank;
     Engine engine;
-    Bus& bus;
 
     void Rotate(const Mat3x3& rotation) {
         orientation = rotation * orientation;
     }
 
     void SetThrottle(float t) { engine.SetThrottle(t); }
+
+    void ApplyAttitudeMode() {
+        switch (currentMode) {
+            case ATTITUDE_HOLD:
+                break;
+
+            case LIFTOFF_KICK:
+                orientation = Mat3x3::RotateY(5.0f) * orientation;
+                currentMode = ASCENT_FOLLOW_VELOCITY;  // one-shot, switch after applying
+                break;
+
+            case ASCENT_FOLLOW_VELOCITY:
+                if (velocity.Magnitude() > 10.0f) {
+                    // Compute pitch angle from velocity direction (2D approximation in x-z plane)
+                    float pitchDegrees = atan2(velocity.getX(), velocity.getZ()) * 180.0f / M_PI;
+                    orientation = Mat3x3::RotateY(pitchDegrees);
+                }
+                break;
+
+            case LANDING_RETROGRADE:
+                // TODO
+                break;
+        }
+    }
 
 public:
     Rocket(Bus& bus_) 
@@ -37,6 +63,13 @@ public:
 
     void Update(Vec3 externalForces, float dt) {
         engine.Update(dt);
+
+        float modeCmd;
+        if (bus.attitudeChannel.read(modeCmd)) {
+            currentMode = (AttitudeMode)(int)modeCmd;
+        }
+        ApplyAttitudeMode();
+
         Vec3 thrustDirection = orientation * forward;
         Vec3 thrustForce = thrustDirection * engine.GetThrust();
         Vec3 acceleration = (thrustForce + externalForces) * (1.0f / (dryMass + fuelTank.GetFuel()));
