@@ -58,9 +58,10 @@ public:
           position(0,0,0), velocity(0,0,0), acceleration (0,0,0),
           fuelTank(), bus(bus_), engine(bus_, fuelTank) {}
     
-    Rocket(Bus& bus_, float throttle_, float fuel_, vector<float> startPos = {0,0,0}, vector<float> startVel = {0,0,0}, vector<float> startAccel = {0,0,0}) 
-    : orientation(), dryMass(1200000.0f), forward(0,0,1), 
-      position(startPos[0],startPos[1],startPos[2]), velocity(startVel[0],startVel[1],startVel[2]), acceleration (startAccel[0],startAccel[1],startAccel[2]), fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_) {}
+    Rocket(Bus& bus_, float throttle_, float fuel_, Vec3 startPos = Vec3(0,0,0), Vec3 startVel = Vec3(0,0,0), Vec3 startAccel = Vec3(0,0,0)) 
+        : orientation(), dryMass(1200000.0f), forward(0,0,1), 
+        position(startPos), velocity(startVel), acceleration(startAccel), 
+        fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_) {}
 
     void Update(Vec3 externalForces, float dt) {
         engine.Update(dt);

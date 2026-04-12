@@ -36,16 +36,22 @@ public:
         bus.throttleChannel.swapBuffers();
     }
 
-    float readAltitude() {
-        float val;
-        if (bus.altitudeChannel.read(val)) return val;
-        return 0.0f;
+    Vec3 readPosition() {
+        Vec3 pos;
+        float posX = 0, posY = 0, posZ = 0;
+        if(bus.posXChannel.read(posX) && bus.posYChannel.read(posY) && bus.posZChannel.read(posZ)){
+            pos = Vec3(posX, posY, posZ);
+        }
+        return pos;
     }
 
-    float readVelocity() {
-        float val;
-        if (bus.velocityChannel.read(val)) return val;
-        return 0.0f;
+    Vec3 readVelocity() {
+        Vec3 vel;
+        float velX = 0, velY = 0, velZ = 0;
+        if(bus.velXChannel.read(velX) && bus.velYChannel.read(velY) && bus.velZChannel.read(velZ)){
+            vel = Vec3(velX, velY, velZ);
+        }
+        return vel;
     }
 
     float readMass() {
@@ -77,8 +83,9 @@ public:
         while (ls.getState() != "SAFED") {
             cycle++;
 
-            float alt = readAltitude();
-            float velocity = readVelocity();
+            Vec3 pos = readPosition();
+            float alt = pos.getZ();
+            Vec3 velocity = readVelocity();
             float mass = readMass();
 
             if (ls.getState() == "LIFTOFF") {
@@ -98,7 +105,7 @@ public:
                 }
             }
             else if (ls.getState() == "MECO") {
-                if (alt <= 1400.0 && velocity < 0) {
+                if (alt <= 1400.0 && velocity.getZ() < 0) {
                     ls.transition(ls.LANDING);
                     setThrottle(1.0f);
                 }
@@ -111,7 +118,7 @@ public:
                 else {
                     float targetVel = -0.05f * alt - 1.0f;
                     float hoverThrottle = (9.8 * mass) / 70000000;
-                    float throttle = hoverThrottle + landingPID.Compute(targetVel, velocity, dt);
+                    float throttle = hoverThrottle + landingPID.Compute(targetVel, velocity.getZ(), dt);
                     if (throttle > 1.0f) throttle = 1.0f;
                     if (throttle < 0.0f) throttle = 0.0f;                   
                     setThrottle(throttle);
@@ -128,7 +135,7 @@ public:
                 auto totalCycle = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
                 std::cout << "Cycle " << cycle << ": State=" << ls.getState()
                     << " Altitude: " << alt << "ft"
-                    << " Velocity: " << velocity << "ft/sec"
+                    << " Velocity: (" << velocity.getX() << ", " << velocity.getY() << ", " << velocity.getZ() << ") ft/sec"
                     << " Throttle: " << bus.throttleChannel.reader[0]
                     << " Mass: " << mass
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
