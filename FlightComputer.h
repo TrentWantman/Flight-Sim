@@ -4,6 +4,7 @@
 #include "LaunchSequence.h"
 #include "Bus.h"
 #include "PID.h"
+#include "AttitudeMode.h"
 #include <chrono>
 #include <thread>
 #include <iostream>
@@ -16,6 +17,7 @@ private:
     LaunchSequence ls;
     static constexpr float dt = 0.1f;
     PID landingPID;
+    bool gravityTurnStarted = false;
 
 
 public:
@@ -52,6 +54,11 @@ public:
         return 0.0f;
     }
 
+    void setAttitudeMode(AttitudeMode mode) {
+        bus.attitudeChannel.write((float)mode);
+        bus.attitudeChannel.swapBuffers();
+    }
+
     void run() {
         auto cycleTime = std::chrono::milliseconds(100);
         auto startAllCycles = std::chrono::steady_clock::now();
@@ -75,6 +82,10 @@ public:
             float mass = readMass();
 
             if (ls.getState() == "LIFTOFF") {
+                if (alt >= 500.0f && !gravityTurnStarted) {
+                    setAttitudeMode(LIFTOFF_KICK);
+                    gravityTurnStarted = true;
+                }
                 if (alt >= 1200.0) {
                     ls.transition(ls.MAX_Q);
                     setThrottle(0.004f);
