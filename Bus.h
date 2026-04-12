@@ -10,6 +10,7 @@ public:
     DoubleCircularBuffer massChannel;
     DoubleCircularBuffer throttleChannel;
     DoubleCircularBuffer rotationChannel;
+    DoubleCircularBuffer attitudeChannel;
 };
 
 #endif
