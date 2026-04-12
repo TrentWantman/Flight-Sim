@@ -35,7 +35,7 @@ private:
 
             case LIFTOFF_KICK:
                 orientation = Mat3x3::RotateY(5.0f) * orientation;
-                currentMode = ASCENT_FOLLOW_VELOCITY;  // one-shot, switch after applying
+                currentMode = ATTITUDE_HOLD;
                 break;
 
             case ASCENT_FOLLOW_VELOCITY:
@@ -69,6 +69,7 @@ public:
         float modeCmd;
         if (bus.attitudeChannel.read(modeCmd)) {
             currentMode = (AttitudeMode)(int)modeCmd;
+            std::cout << "Rocket received attitude mode: " << (int)currentMode << std::endl;
         }
         ApplyAttitudeMode();
 

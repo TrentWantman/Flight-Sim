@@ -19,6 +19,10 @@ private:
     static constexpr float dt = 0.1f;
     PID landingPID;
     bool gravityTurnStarted = false;
+    bool ascentFollowStarted = false;
+    float lastMass = 5000000.0f;
+    Vec3 lastPosition;
+    Vec3 lastVelocity;
 
 
 public:
@@ -38,27 +42,25 @@ public:
     }
 
     Vec3 readPosition() {
-        Vec3 pos;
-        float posX = 0, posY = 0, posZ = 0;
-        if(bus.posXChannel.read(posX) && bus.posYChannel.read(posY) && bus.posZChannel.read(posZ)){
-            pos = Vec3(posX, posY, posZ);
+        float posX, posY, posZ;
+        if (bus.posXChannel.read(posX) && bus.posYChannel.read(posY) && bus.posZChannel.read(posZ)) {
+            lastPosition = Vec3(posX, posY, posZ);
         }
-        return pos;
+        return lastPosition;
     }
 
     Vec3 readVelocity() {
-        Vec3 vel;
-        float velX = 0, velY = 0, velZ = 0;
-        if(bus.velXChannel.read(velX) && bus.velYChannel.read(velY) && bus.velZChannel.read(velZ)){
-            vel = Vec3(velX, velY, velZ);
+        float velX, velY, velZ;
+        if (bus.velXChannel.read(velX) && bus.velYChannel.read(velY) && bus.velZChannel.read(velZ)) {
+            lastVelocity = Vec3(velX, velY, velZ);
         }
-        return vel;
+        return lastVelocity;
     }
 
     float readMass() {
         float val;
-        if (bus.massChannel.read(val)) return val;
-        return 0.0f;
+        if (bus.massChannel.read(val)) lastMass = val;
+        return lastMass;
     }
 
     void setAttitudeMode(AttitudeMode mode) {
@@ -94,6 +96,12 @@ public:
                     setAttitudeMode(LIFTOFF_KICK);
                     gravityTurnStarted = true;
                 }
+                
+                if (gravityTurnStarted && !ascentFollowStarted && std::abs(velocity.getX()) > 5.0f) {
+                    setAttitudeMode(ASCENT_FOLLOW_VELOCITY);
+                    ascentFollowStarted = true;
+                }
+                
                 if (alt >= 1200.0) {
                     ls.transition(ls.MAX_Q);
                     setThrottle(0.004f);
