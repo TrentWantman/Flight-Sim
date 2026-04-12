@@ -5,6 +5,7 @@
 #include "Bus.h"
 #include "PID.h"
 #include "AttitudeMode.h"
+#include "Vec3.h"
 #include <chrono>
 #include <thread>
 #include <iostream>
