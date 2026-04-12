@@ -1,7 +1,7 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include "DoubleCircularBuffer.h"
+#include "Bus.h"
 #include "FuelTank.h"
 
 class Engine

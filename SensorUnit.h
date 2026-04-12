@@ -2,7 +2,7 @@
 #define SENSORUNIT_H
 
 #include "Rocket.h"
-#include "DoubleCircularBuffer.h"
+#include "Bus.h"
 #include <thread>
 #include <iostream>
 #include <string>
@@ -30,7 +30,7 @@ public:
 
     std::mutex mtx_;
 
-    SensorUnit(const std::string& name_, Bus& bus_, const Rocket& rocket_, int sensortype_) : name(name_), bus(bus),  faulted(false), latestVote_(0.0), rocket(rocket_), sensortype(sensortype_) {}
+    SensorUnit(const std::string& name_, Bus& bus_, const Rocket& rocket_, int sensortype_) : name(name_), bus(bus_),  faulted(false), latestVote_(0.0), rocket(rocket_), sensortype(sensortype_) {}
 
     float noise() {
         return ((rand() % 100) - 50) * 0.01;

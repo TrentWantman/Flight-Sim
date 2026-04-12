@@ -29,7 +29,7 @@ public:
     Rocket(Bus& bus_) 
         : orientation(), dryMass(1200000.0f), forward(0,0,1), 
           position(0,0,0), velocity(0,0,0), 
-          fuelTank(), bus(bus_), engine(bus, fuelTank) {}
+          fuelTank(), bus(bus_), engine(bus_, fuelTank) {}
     
     Rocket(Bus& bus_, float throttle_, float fuel_, float startAlt, float startVel) 
     : orientation(), dryMass(1200000.0f), forward(0,0,1), 

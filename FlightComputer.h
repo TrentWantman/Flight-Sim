@@ -2,7 +2,7 @@
 #define FLIGHTCOMPUTER_H
 
 #include "LaunchSequence.h"
-#include "DoubleCircularBuffer.h"
+#include "Bus.h"
 #include "PID.h"
 #include <chrono>
 #include <thread>
