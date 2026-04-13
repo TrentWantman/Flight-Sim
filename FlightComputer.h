@@ -159,8 +159,8 @@ public:
                     js << "{\"cycle\":" << cycle
                        << ",\"state\":\"" << ls.getState() << "\""
                        << ",\"altitude\":" << alt
-                       << ",\"velocity\":" << velocity
-                       << ",\"throttle\":" << commandBuffer.reader[0]
+                       << ",\"velocity\":" "(" << velocity.getX() << ", " << velocity.getY() << ", " << velocity.getZ() << ") ft/sec"
+                       << ",\"throttle\":" << bus.throttleChannel.reader[0]
                        << ",\"mass\":" << mass << "}";
                     wsServer->broadcast(js.str());
                 }
