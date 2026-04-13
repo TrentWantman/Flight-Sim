@@ -1,0 +1,11 @@
+#ifndef ATTITUDEMODE_H
+#define ATTITUDEMODE_H
+
+enum AttitudeMode {
+    ATTITUDE_HOLD = 0,
+    LIFTOFF_KICK = 1,
+    ASCENT_FOLLOW_VELOCITY = 2,
+    LANDING_RETROGRADE = 3,
+};
+
+#endif

@@ -4,16 +4,21 @@
 #include "Mat3x3.h"
 #include "Engine.h"
 #include "FuelTank.h"
+#include "Bus.h"
+#include "AttitudeMode.h"
 
 class Rocket {
 private:
-    const float DRAG_COEFF = 0.3;
+    Bus& bus;
+    const float DRAG_COEFF = 0.3; //fix with real drag coefficent class later on? 
     const float AREA = 70;
     float dryMass;
+    AttitudeMode currentMode = ATTITUDE_HOLD;
     Mat3x3 orientation;
     Vec3 forward;
     Vec3 position;
     Vec3 velocity;
+    Vec3 acceleration;
     FuelTank fuelTank;
     Engine engine;
 
@@ -23,21 +28,54 @@ private:
 
     void SetThrottle(float t) { engine.SetThrottle(t); }
 
+    void ApplyAttitudeMode() {
+        switch (currentMode) {
+            case ATTITUDE_HOLD:
+                break;
+
+            case LIFTOFF_KICK:
+                orientation = Mat3x3::RotateY(5.0f) * orientation;
+                currentMode = ATTITUDE_HOLD;
+                break;
+
+            case ASCENT_FOLLOW_VELOCITY:
+                if (velocity.Magnitude() > 10.0f) {
+                    // Compute pitch angle from velocity direction (2D approximation in x-z plane)
+                    float pitchDegrees = atan2(velocity.getX(), velocity.getZ()) * 180.0f / M_PI;
+                    orientation = Mat3x3::RotateY(pitchDegrees);
+                }
+                break;
+
+            case LANDING_RETROGRADE:
+                // TODO
+                break;
+        }
+    }
+
 public:
-    Rocket(DoubleCircularBuffer& cmdBuffer) 
+    Rocket(Bus& bus_) 
         : orientation(), dryMass(1200000.0f), forward(0,0,1), 
-          position(0,0,0), velocity(0,0,0), 
-          fuelTank(), engine(cmdBuffer, fuelTank) {}
+          position(0,0,0), velocity(0,0,0), acceleration (0,0,0),
+          fuelTank(), bus(bus_), engine(bus_, fuelTank) {}
     
-    Rocket(DoubleCircularBuffer& cmdBuffer, float throttle_, float fuel_, float startAlt, float startVel) 
-    : orientation(), dryMass(1200000.0f), forward(0,0,1), 
-      position(0,0,startAlt), velocity(0,0,startVel), fuelTank(fuel_), engine(cmdBuffer, fuelTank, throttle_) {}
+    Rocket(Bus& bus_, float throttle_, float fuel_, Vec3 startPos = Vec3(0,0,0), Vec3 startVel = Vec3(0,0,0), Vec3 startAccel = Vec3(0,0,0)) 
+        : orientation(), dryMass(1200000.0f), forward(0,0,1), 
+        position(startPos), velocity(startVel), acceleration(startAccel), 
+        fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_) {}
 
     void Update(Vec3 externalForces, float dt) {
         engine.Update(dt);
+
+        float modeCmd;
+        if (bus.attitudeChannel.read(modeCmd)) {
+            currentMode = (AttitudeMode)(int)modeCmd;
+            std::cout << "Rocket received attitude mode: " << (int)currentMode << std::endl;
+        }
+        ApplyAttitudeMode();
+
         Vec3 thrustDirection = orientation * forward;
         Vec3 thrustForce = thrustDirection * engine.GetThrust();
-        Vec3 acceleration = (thrustForce + externalForces) * (1.0f / (dryMass + fuelTank.GetFuel()));
+        acceleration = (thrustForce + externalForces) * (1.0f / (dryMass + fuelTank.GetFuel()));
         velocity = velocity + acceleration * dt;
         position = position + velocity * dt;
 
@@ -60,6 +98,9 @@ public:
     Vec3 GetPosition() const { return position; }
 
     Vec3 GetVelocity() const { return velocity; }
+
+    Vec3 GetAcceleration() const { return acceleration; }
+
 
     void Print() const {
         printf("Rocket State\n");

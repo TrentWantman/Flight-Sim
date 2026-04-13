@@ -1,7 +1,7 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include "DoubleCircularBuffer.h"
+#include "Bus.h"
 #include "FuelTank.h"
 
 class Engine
@@ -10,14 +10,14 @@ private:
 
     const float maxThrust = 70000000;
     float throttle;
-    DoubleCircularBuffer& buffer;
+    Bus& bus;
     FuelTank& fuelTank;
     float burnRate = 21450;
 
 public:
 
-    Engine(DoubleCircularBuffer& buffer_, FuelTank& fuelTank_ ): buffer(buffer_), fuelTank(fuelTank_), throttle(0.f){}
-    Engine(DoubleCircularBuffer& buffer_, FuelTank& fuelTank_, float throttle_): buffer(buffer_), fuelTank(fuelTank_), throttle(throttle_){}
+    Engine(Bus& bus_, FuelTank& fuelTank_ ): bus(bus_), fuelTank(fuelTank_), throttle(0.f){}
+    Engine(Bus& bus_, FuelTank& fuelTank_, float throttle_): bus(bus_), fuelTank(fuelTank_), throttle(throttle_){}
 
 
     void Update(float dt) {
@@ -31,7 +31,7 @@ public:
 
     void ReadCommands() {
         float cmd;
-        if (buffer.read(cmd)) {
+        if (bus.throttleChannel.read(cmd)) {
             SetThrottle(cmd);
         }
     }

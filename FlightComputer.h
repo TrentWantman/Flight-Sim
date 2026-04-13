@@ -2,8 +2,10 @@
 #define FLIGHTCOMPUTER_H
 
 #include "LaunchSequence.h"
-#include "DoubleCircularBuffer.h"
+#include "Bus.h"
 #include "PID.h"
+#include "AttitudeMode.h"
+#include "Vec3.h"
 #include "WebSocketServer.h"
 #include <chrono>
 #include <thread>
@@ -14,50 +16,61 @@
 
 class FlightComputer {
 private:
-    DoubleCircularBuffer& altBuffer;
-    DoubleCircularBuffer& velBuffer;
-    DoubleCircularBuffer& commandBuffer;
-    DoubleCircularBuffer& massBuffer;
+    Bus& bus;
     LaunchSequence ls;
     static constexpr float dt = 0.1f;
     PID landingPID;
     WebSocketServer* wsServer = nullptr;
+    bool gravityTurnStarted = false;
+    bool ascentFollowStarted = false;
+    float lastMass = 5000000.0f;
+    Vec3 lastPosition;
+    Vec3 lastVelocity;
 
 
 public:
     bool stopped = false;
 
-    FlightComputer(DoubleCircularBuffer& alt, DoubleCircularBuffer& vel, DoubleCircularBuffer& cmd, DoubleCircularBuffer& mass)
-        : altBuffer(alt), velBuffer(vel), commandBuffer(cmd), massBuffer(mass), landingPID(0.02f, 0.0f, 0.0f) {}
+    FlightComputer(Bus& bus_)
+        : bus(bus_), landingPID(0.02f, 0.0f, 0.0f) {}
 
-    FlightComputer(DoubleCircularBuffer& alt, DoubleCircularBuffer& vel, DoubleCircularBuffer& cmd, DoubleCircularBuffer& mass, LaunchSequence::State startState)
-        : altBuffer(alt), velBuffer(vel), commandBuffer(cmd), massBuffer(mass), landingPID(0.02f, 0.0f, 0.0f) {
+    FlightComputer(Bus& bus_, LaunchSequence::State startState)
+        : bus(bus_), landingPID(0.02f, 0.0f, 0.0f) { 
             ls.setState(startState);
         }
 
     void setWebSocketServer(WebSocketServer* s) { wsServer = s; }
 
     void setThrottle(float throttle) {
-        commandBuffer.write(throttle);
-        commandBuffer.swapBuffers();
+        bus.throttleChannel.write(throttle);
+        bus.throttleChannel.swapBuffers();
     }
 
-    float readAltitude() {
-        float val;
-        if (altBuffer.read(val)) return val;
-        return 0.0f;
+    Vec3 readPosition() {
+        float posX, posY, posZ;
+        if (bus.posXChannel.read(posX) && bus.posYChannel.read(posY) && bus.posZChannel.read(posZ)) {
+            lastPosition = Vec3(posX, posY, posZ);
+        }
+        return lastPosition;
     }
 
-    float readVelocity() {
-        float val;
-        if (velBuffer.read(val)) return val;
-        return 0.0f;
+    Vec3 readVelocity() {
+        float velX, velY, velZ;
+        if (bus.velXChannel.read(velX) && bus.velYChannel.read(velY) && bus.velZChannel.read(velZ)) {
+            lastVelocity = Vec3(velX, velY, velZ);
+        }
+        return lastVelocity;
     }
 
     float readMass() {
         float val;
-        if (massBuffer.read(val)) return val;
-        return 0.0f;
+        if (bus.massChannel.read(val)) lastMass = val;
+        return lastMass;
+    }
+
+    void setAttitudeMode(AttitudeMode mode) {
+        bus.attitudeChannel.write((float)mode);
+        bus.attitudeChannel.swapBuffers();
     }
 
     void run() {
@@ -78,11 +91,22 @@ public:
         while (ls.getState() != "SAFED") {
             cycle++;
 
-            float alt = readAltitude();
-            float velocity = readVelocity();
+            Vec3 pos = readPosition();
+            float alt = pos.getZ();
+            Vec3 velocity = readVelocity();
             float mass = readMass();
 
             if (ls.getState() == "LIFTOFF") {
+                if (alt >= 500.0f && !gravityTurnStarted) {
+                    setAttitudeMode(LIFTOFF_KICK);
+                    gravityTurnStarted = true;
+                }
+                
+                if (gravityTurnStarted && !ascentFollowStarted && std::abs(velocity.getX()) > 5.0f) {
+                    setAttitudeMode(ASCENT_FOLLOW_VELOCITY);
+                    ascentFollowStarted = true;
+                }
+                
                 if (alt >= 1200.0) {
                     ls.transition(ls.MAX_Q);
                     setThrottle(0.004f);
@@ -95,7 +119,7 @@ public:
                 }
             }
             else if (ls.getState() == "MECO") {
-                if (alt <= 1400.0 && velocity < 0) {
+                if (alt <= 1400.0 && velocity.getZ() < 0) {
                     ls.transition(ls.LANDING);
                     setThrottle(1.0f);
                 }
@@ -108,7 +132,7 @@ public:
                 else {
                     float targetVel = -0.05f * alt - 1.0f;
                     float hoverThrottle = (9.8 * mass) / 70000000;
-                    float throttle = hoverThrottle + landingPID.Compute(targetVel, velocity, dt);
+                    float throttle = hoverThrottle + landingPID.Compute(targetVel, velocity.getZ(), dt);
                     if (throttle > 1.0f) throttle = 1.0f;
                     if (throttle < 0.0f) throttle = 0.0f;                   
                     setThrottle(throttle);
@@ -125,8 +149,8 @@ public:
                 auto totalCycle = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
                 std::cout << "Cycle " << cycle << ": State=" << ls.getState()
                     << " Altitude: " << alt << "ft"
-                    << " Velocity: " << velocity << "ft/sec"
-                    << " Throttle: " << commandBuffer.reader[0]
+                    << " Velocity: (" << velocity.getX() << ", " << velocity.getY() << ", " << velocity.getZ() << ") ft/sec"
+                    << " Throttle: " << bus.throttleChannel.reader[0]
                     << " Mass: " << mass
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
 

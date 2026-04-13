@@ -2,7 +2,7 @@
 #define SENSORUNIT_H
 
 #include "Rocket.h"
-#include "DoubleCircularBuffer.h"
+#include "Bus.h"
 #include <thread>
 #include <iostream>
 #include <string>
@@ -13,12 +13,12 @@ class SensorUnit {
 private:
     const Rocket& rocket;
     float dt = 0.1f;
+    Bus& bus;
 
 public:
     std::string name;
     int sensortype;
 
-    DoubleCircularBuffer& buffer;
     float s1_, s2_, s3_;
     bool s1_faulted = false;
     bool s2_faulted = false;
@@ -30,7 +30,7 @@ public:
 
     std::mutex mtx_;
 
-    SensorUnit(const std::string& name_, DoubleCircularBuffer& buffer_, const Rocket& rocket_, int sensortype_) : name(name_), buffer(buffer_),  faulted(false), latestVote_(0.0), rocket(rocket_), sensortype(sensortype_) {}
+    SensorUnit(const std::string& name_, Bus& bus_, const Rocket& rocket_, int sensortype_) : name(name_), bus(bus_),  faulted(false), latestVote_(0.0), rocket(rocket_), sensortype(sensortype_) {}
 
     float noise() {
         return ((rand() % 100) - 50) * 0.01;
@@ -74,8 +74,18 @@ public:
         {
             std::lock_guard<std::mutex> lock(mtx_);
             latestVote_ = update(value + noise(), value + noise(), value + noise());
-            buffer.write(latestVote_);
-            buffer.swapBuffers();
+            if (sensortype == 0) {
+                bus.altitudeChannel.write(latestVote_);
+                bus.altitudeChannel.swapBuffers();
+            }
+            else if (sensortype == 1) {
+                bus.velocityChannel.write(latestVote_);
+                bus.velocityChannel.swapBuffers();
+            }
+            else if (sensortype == 2) {
+                bus.massChannel.write(latestVote_);
+                bus.massChannel.swapBuffers();
+            }
         }
             cycle++;
             std::this_thread::sleep_until(std::chrono::steady_clock::now() + std::chrono::milliseconds(50));
