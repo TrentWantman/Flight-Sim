@@ -133,6 +133,7 @@ public:
             else if (ls.getState() == "MECO") {
                 if (alt <= 1400.0 && velocity.getZ() < 0) {
                     ls.transition(ls.LANDING);
+                    setAttitudeMode(LANDING_RETROGRADE);
                     setThrottle(1.0f);
                 }
             }
@@ -164,7 +165,10 @@ public:
                     << " Velocity: (" << velocity.getX() << ", " << velocity.getY() << ", " << velocity.getZ() << ") ft/sec"
                     << " Throttle: " << bus.throttleChannel.reader[0]
                     << " Mass: " << mass
+                    << " Orient X: " << orientX
+                    << " Orient Z: " << orientZ
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
+                    
 
                 if (wsServer) {
                     std::ostringstream js;

@@ -47,7 +47,11 @@ private:
                 break;
 
             case LANDING_RETROGRADE:
-                // TODO
+                if (velocity.Magnitude() > 1.0f) {
+                    Vec3 retrograde = velocity * -1.0f;
+                    float pitchDegrees = atan2(retrograde.getX(), retrograde.getZ()) * 180.0f / M_PI;
+                    orientation = Mat3x3::RotateY(pitchDegrees);
+                }
                 break;
         }
     }
