@@ -47,10 +47,13 @@ public:
             auto start = std::chrono::steady_clock::now();
 
             Vec3 accel = rocket.GetAcceleration();
+            Vec3 fwd = rocket.GetForwardDirection();
 
             bus.accXChannel.write(voted(accel.getX())); bus.accXChannel.swapBuffers();
             bus.accYChannel.write(voted(accel.getY())); bus.accYChannel.swapBuffers();
             bus.accZChannel.write(voted(accel.getZ())); bus.accZChannel.swapBuffers();
+            bus.orientXChannel.write(fwd.getX()); bus.orientXChannel.swapBuffers();
+            bus.orientZChannel.write(fwd.getZ()); bus.orientZChannel.swapBuffers();
 
             std::this_thread::sleep_until(start + cycleTime);
         }

@@ -101,6 +101,7 @@ public:
 
     Vec3 GetAcceleration() const { return acceleration; }
 
+    Vec3 GetForwardDirection() const { return orientation * forward; }
 
     void Print() const {
         printf("Rocket State\n");

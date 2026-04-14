@@ -24,6 +24,8 @@ private:
     bool gravityTurnStarted = false;
     bool ascentFollowStarted = false;
     float lastMass = 5000000.0f;
+    float lastOrientX = 0.0f;
+    float lastOrientZ = 1.0f;
     Vec3 lastPosition;
     Vec3 lastVelocity;
 
@@ -68,6 +70,14 @@ public:
         return lastMass;
     }
 
+    void readOrientation(float& ox, float& oz) {
+        float val;
+        if (bus.orientXChannel.read(val)) lastOrientX = val;
+        if (bus.orientZChannel.read(val)) lastOrientZ = val;
+        ox = lastOrientX;
+        oz = lastOrientZ;
+    }
+
     void setAttitudeMode(AttitudeMode mode) {
         bus.attitudeChannel.write((float)mode);
         bus.attitudeChannel.swapBuffers();
@@ -95,6 +105,8 @@ public:
             float alt = pos.getZ();
             Vec3 velocity = readVelocity();
             float mass = readMass();
+            float orientX, orientZ;
+            readOrientation(orientX, orientZ);
 
             if (ls.getState() == "LIFTOFF") {
                 if (alt >= 500.0f && !gravityTurnStarted) {
@@ -158,8 +170,12 @@ public:
                     std::ostringstream js;
                     js << "{\"cycle\":" << cycle
                        << ",\"state\":\"" << ls.getState() << "\""
-                       << ",\"altitude\":" << alt
-                       << ",\"velocity\":" "(" << velocity.getX() << ", " << velocity.getY() << ", " << velocity.getZ() << ") ft/sec"
+                       << ",\"posX\":" << pos.getX()
+                       << ",\"posZ\":" << pos.getZ()
+                       << ",\"velX\":" << velocity.getX()
+                       << ",\"velZ\":" << velocity.getZ()
+                       << ",\"orientX\":" << orientX
+                       << ",\"orientZ\":" << orientZ
                        << ",\"throttle\":" << bus.throttleChannel.reader[0]
                        << ",\"mass\":" << mass << "}";
                     wsServer->broadcast(js.str());

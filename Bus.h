@@ -18,6 +18,8 @@ public:
     DoubleCircularBuffer accXChannel;
     DoubleCircularBuffer accYChannel;
     DoubleCircularBuffer accZChannel;
+    DoubleCircularBuffer orientXChannel;
+    DoubleCircularBuffer orientZChannel;
 };
 
 #endif
