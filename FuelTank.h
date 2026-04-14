@@ -25,5 +25,9 @@ public:
         fuel -= amount;
         return amount;
     }
+
+    void SetFuel(float f) { 
+        fuel = f < 0 ? 0 : f; 
+    }
 };
 #endif

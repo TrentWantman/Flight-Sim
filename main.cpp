@@ -9,6 +9,8 @@
 #include "GPSSensor.h"
 #include "FuelSensor.h"
 #include "WebSocketServer.h"
+#include "EulerIntegrator.h"
+#include "RK4Integrator.h"
 
 using namespace std;
 
@@ -22,17 +24,18 @@ int main() {
 
     World world;
     Bus bus;
+    RK4Integrator integrator;
 
     // Full Launch Test
-    Rocket rocket(bus);
+    Rocket rocket(bus, integrator, world);
     IMUSensor imu("IMU-1", bus, rocket);
     GPSSensor gps("GPS-1", bus, rocket);
     FuelSensor fuel("FUEL-1", bus, rocket);
     FlightComputer fc(bus);
-        fc.setWebSocketServer(&wsServer);
+    fc.setWebSocketServer(&wsServer);
 
     // MECO->Landing Test
-    // Rocket rocket(bus, 0.0f, 3294760.0f, Vec3(0,0,1418.07f), Vec3(0,0,-81.4478f));
+    // Rocket rocket(bus, integrator, world, 0.0f, 3294760.0f, Vec3(0,0,1418.07f), Vec3(0,0,-81.4478f));
     // IMUSensor imu("IMU-1", bus, rocket);
     // GPSSensor gps("GPS-1", bus, rocket);
     // FuelSensor fuel("FUEL-1", bus, rocket);
@@ -46,8 +49,7 @@ int main() {
     int count = 0;
     while (!fc.stopped) {
         count++;
-        Vec3 forces = world.ComputeForces(rocket);
-        rocket.Update(forces, 0.001f);
+        rocket.Update(0.001f);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
