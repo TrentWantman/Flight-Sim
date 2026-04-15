@@ -7,12 +7,13 @@
 class Engine
 {
 private:
-
-    const float maxThrust = 70000000;
+    const float maxMassFlow = 21450.0f;
+    const float isp = 330.0f;
+    float g0 = 9.80665f;
+    const float maxThrust = maxMassFlow * isp * g0;
     float throttle;
     Bus& bus;
     FuelTank& fuelTank;
-    float burnRate = 21450;
 
 public:
 
@@ -22,7 +23,7 @@ public:
 
     void Update(float dt) {
         ReadCommands();
-        float fuelNeeded = burnRate * throttle * dt;
+        float fuelNeeded = maxMassFlow * throttle * dt;
         float fuelConsumed = fuelTank.Consume(fuelNeeded);
         if (fuelConsumed < fuelNeeded) {
             throttle = 0.0f;
@@ -62,9 +63,9 @@ public:
 
     float GetThrottle() const { return throttle; }
 
-    float GetThrust() const { return maxThrust * throttle; }
+    float GetThrust() const { return maxMassFlow * throttle * isp * g0; }
 
-    float GetBurnRate() const { return burnRate * throttle; }
+    float GetBurnRate() const { return maxMassFlow * throttle; }
 
 };
 
