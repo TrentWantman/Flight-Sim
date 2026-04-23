@@ -4,6 +4,7 @@
 #include "LaunchSequence.h"
 #include "Bus.h"
 #include "PID.h"
+#include "KalmanFilter1D.h"
 #include "AttitudeMode.h"
 #include "Vec3.h"
 #include "WebSocketServer.h"
@@ -20,6 +21,7 @@ private:
     LaunchSequence ls;
     static constexpr float dt = 0.1f;
     PID landingPID;
+    KalmanFilter1D kalman;
     WebSocketServer* wsServer = nullptr;
     bool gravityTurnStarted = false;
     bool ascentFollowStarted = false;
@@ -28,6 +30,8 @@ private:
     float lastOrientZ = 1.0f;
     Vec3 lastPosition;
     Vec3 lastVelocity;
+    Vec3 lastAcceleration;
+    bool gpsFresh = false;
 
 
 public:
@@ -48,13 +52,24 @@ public:
         bus.throttleChannel.swapBuffers();
     }
 
+    void updateKalman() {
+        kalman.Predict(lastAcceleration.getZ(), dt);
+        
+        if (gpsFresh) {
+            kalman.Update(lastPosition.getZ());
+        }
+    }
+
     Vec3 readPosition() {
         float posX, posY, posZ;
+        gpsFresh = false;
         if (bus.posXChannel.read(posX) && bus.posYChannel.read(posY) && bus.posZChannel.read(posZ)) {
             lastPosition = Vec3(posX, posY, posZ);
+            gpsFresh = true;
         }
         return lastPosition;
     }
+    
 
     Vec3 readVelocity() {
         float velX, velY, velZ;
@@ -62,6 +77,14 @@ public:
             lastVelocity = Vec3(velX, velY, velZ);
         }
         return lastVelocity;
+    }
+
+    Vec3 readAcceleration() {
+        float accX, accY, accZ;
+        if (bus.accXChannel.read(accX) && bus.accYChannel.read(accY) && bus.accZChannel.read(accZ)) {
+            lastAcceleration = Vec3(accX, accY, accZ);
+        }
+        return lastAcceleration;
     }
 
     float readMass() {
@@ -102,8 +125,11 @@ public:
             cycle++;
 
             Vec3 pos = readPosition();
-            float alt = pos.getZ();
             Vec3 velocity = readVelocity();
+            Vec3 acceleation = readAcceleration();
+            updateKalman();
+            float alt = kalman.GetAltitude();
+            float velZ = kalman.GetVelocity();
             float mass = readMass();
             float orientX, orientZ;
             readOrientation(orientX, orientZ);
@@ -131,7 +157,7 @@ public:
                 }
             }
             else if (ls.getState() == "MECO") {
-                if (alt <= 1400.0 && velocity.getZ() < 0) {
+                if (alt <= 1400.0 && velZ < 0) {
                     ls.transition(ls.LANDING);
                     setAttitudeMode(LANDING_RETROGRADE);
                     setThrottle(1.0f);
@@ -145,7 +171,7 @@ public:
                 else {
                     float targetVel = -0.05f * alt - 1.0f;
                     float hoverThrottle = (9.8 * mass) / 70000000;
-                    float throttle = hoverThrottle + landingPID.Compute(targetVel, velocity.getZ(), dt);
+                    float throttle = hoverThrottle + landingPID.Compute(targetVel, velZ, dt);
                     if (throttle > 1.0f) throttle = 1.0f;
                     if (throttle < 0.0f) throttle = 0.0f;                   
                     setThrottle(throttle);
@@ -162,7 +188,7 @@ public:
                 auto totalCycle = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
                 std::cout << "Cycle " << cycle << ": State=" << ls.getState()
                     << " Altitude: " << alt << "ft"
-                    << " Velocity: (" << velocity.getX() << ", " << velocity.getY() << ", " << velocity.getZ() << ") ft/sec"
+                    << " Velocity: (" << velocity.getX() << ", " << velocity.getY() << ", " << velZ << ") ft/sec"
                     << " Throttle: " << bus.throttleChannel.reader[0]
                     << " Mass: " << mass
                     << " Orient X: " << orientX
@@ -173,15 +199,17 @@ public:
                 if (wsServer) {
                     std::ostringstream js;
                     js << "{\"cycle\":" << cycle
-                       << ",\"state\":\"" << ls.getState() << "\""
-                       << ",\"posX\":" << pos.getX()
-                       << ",\"posZ\":" << pos.getZ()
-                       << ",\"velX\":" << velocity.getX()
-                       << ",\"velZ\":" << velocity.getZ()
-                       << ",\"orientX\":" << orientX
-                       << ",\"orientZ\":" << orientZ
-                       << ",\"throttle\":" << bus.throttleChannel.reader[0]
-                       << ",\"mass\":" << mass << "}";
+                        << ",\"state\":\"" << ls.getState() << "\""
+                        << ",\"posX\":" << pos.getX()
+                        << ",\"posZ\":" << pos.getZ()
+                        << ",\"posZ_filtered\":" << alt
+                        << ",\"velX\":" << velocity.getX()
+                        << ",\"velZ\":" << velocity.getZ()
+                        << ",\"velZ_filtered\":" << velZ
+                        << ",\"orientX\":" << orientX
+                        << ",\"orientZ\":" << orientZ
+                        << ",\"throttle\":" << bus.throttleChannel.reader[0]
+                        << ",\"mass\":" << mass << "}";
                     wsServer->broadcast(js.str());
                 }
             }
