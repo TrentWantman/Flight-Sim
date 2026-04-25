@@ -59,9 +59,13 @@ public:
     void calculateGravityLoss() {
         float mu = 3.986e14f;
         float earthRadius = 6.371e6f;
-        float r = earthRadius + (kalman.GetAltitude() * 0.3048f);
+        float r = earthRadius + (computeAltitude(lastPosition));
         float g = mu / (r * r);
         gravityLoss += g * dt;
+    }
+
+    float computeAltitude(Vec3 pos){
+        return pos.Magnitude() - 6371000.0f;
     }
 
     void setThrottle(float throttle) {
@@ -145,8 +149,8 @@ public:
             Vec3 velocity = readVelocity();
             Vec3 acceleation = readAcceleration();
             updateKalman();
-            float alt = kalman.GetAltitude();
-            float velZ = kalman.GetVelocity();
+            float alt = computeAltitude(lastPosition);
+            float velZ = velocity.getZ();
             float mass = readMass();
             float deltaV = computeDeltaV();
             float orientX, orientZ;
@@ -155,17 +159,17 @@ public:
             if (ls.getState() == "LIFTOFF") {
                 calculateGravityLoss();
                 
-                if (alt >= 500.0f && !gravityTurnStarted) {
+                if (alt >= 152.0f && !gravityTurnStarted) {
                     setAttitudeMode(LIFTOFF_KICK);
                     gravityTurnStarted = true;
                 }
                 
-                if (gravityTurnStarted && !ascentFollowStarted && std::abs(velocity.getX()) > 5.0f) {
+                if (gravityTurnStarted && !ascentFollowStarted && std::abs(velocity.getX()) > 1.5f) {
                     setAttitudeMode(ASCENT_FOLLOW_VELOCITY);
                     ascentFollowStarted = true;
                 }
                 
-                if (alt >= 1200.0) {
+                if (alt >= 366.0f) {
                     ls.transition(ls.MAX_Q);
                     setThrottle(0.004f);
                 }
@@ -173,13 +177,13 @@ public:
             else if (ls.getState() == "MAX_Q") {
                 calculateGravityLoss();
 
-                if (alt >= 1500.0) {
+                if (alt >= 457.0f) {
                     ls.transition(ls.MECO);
                     setThrottle(0.0f);
                 }
             }
             else if (ls.getState() == "MECO") {
-                if (alt <= 1400.0 && velZ < 0) {
+                if (alt <= 427.0 && velZ < 0) {
                     ls.transition(ls.LANDING);
                     setAttitudeMode(LANDING_RETROGRADE);
                     setThrottle(1.0f);
@@ -209,8 +213,8 @@ public:
                 while (std::chrono::steady_clock::now() < start + std::chrono::milliseconds(100)) {}
                 auto totalCycle = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
                 std::cout << "Cycle " << cycle << ": State=" << ls.getState()
-                    << " Altitude: " << alt << "ft"
-                    << " Velocity: (" << velocity.getX() << ", " << velocity.getY() << ", " << velZ << ") ft/sec"
+                    << " Altitude: " << alt << "m"
+                    << " Velocity: (" << velocity.getX() << ", " << velocity.getY() << ", " << velZ << ") m/sec"
                     << " Throttle: " << bus.throttleChannel.reader[0]
                     << " Mass: " << mass
                     << " DeltaV: " << deltaV << " m/s"
@@ -226,7 +230,7 @@ public:
                         << ",\"state\":\"" << ls.getState() << "\""
                         << ",\"posX\":" << pos.getX()
                         << ",\"posZ\":" << pos.getZ()
-                        << ",\"posZ_filtered\":" << alt
+                        << ",\"altitude\":" << alt
                         << ",\"velX\":" << velocity.getX()
                         << ",\"velZ\":" << velocity.getZ()
                         << ",\"velZ_filtered\":" << velZ

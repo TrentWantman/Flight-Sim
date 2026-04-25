@@ -205,8 +205,8 @@ export default function App() {
             <line x1={plotLeft} y1={plotBottom} x2={plotRight} y2={plotBottom} stroke="#3a4566" strokeWidth={1} />
 
             {/* Axis labels */}
-            <text x={5} y={plotTop - 8} fill="#8b98b8" fontSize={10}>Alt (ft)</text>
-            <text x={plotRight - 30} y={plotBottom + 18} fill="#8b98b8" fontSize={9}>X (ft)</text>
+            <text x={5} y={plotTop - 8} fill="#8b98b8" fontSize={10}>Alt (m)</text>
+            <text x={plotRight - 30} y={plotBottom + 18} fill="#8b98b8" fontSize={9}>X (m)</text>
 
             <g clipPath="url(#plotArea)">
               {/* Ground strip (at altitude 0) */}
@@ -268,16 +268,16 @@ export default function App() {
         {/* Gauges */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
           {gauge('State', telemetry?.state ?? '—')}
-          {gauge('Altitude (Z)', fmt(telemetry?.posZ), 'ft')}
-          {gauge('Horizontal (X)', fmt(telemetry?.posX), 'ft')}
-          {gauge('Vel Z', fmt(telemetry?.velZ), 'ft/s')}
-          {gauge('Vel X', fmt(telemetry?.velX), 'ft/s')}
-          {gauge('Speed', fmt(speed), 'ft/s')}
+          {gauge('Altitude (Z)', fmt(telemetry?.posZ), 'm')}
+          {gauge('Horizontal (X)', fmt(telemetry?.posX), 'm')}
+          {gauge('Vel Z', fmt(telemetry?.velZ), 'm/s')}
+          {gauge('Vel X', fmt(telemetry?.velX), 'm/s')}
+          {gauge('Speed', fmt(speed), 'm/s')}
           {gauge('Throttle', fmt(throttle * 100), '%')}
           {gauge('Mass', fmt(telemetry?.mass, 0), 'kg')}
           {gauge('Delta-V', fmt(telemetry?.deltaV, 0), 'm/s')}
           {gauge('Gravity Loss', fmt(telemetry?.gravityLoss, 1), 'm/s')}
-          {gauge('Max Altitude', fmt(maxAlt), 'ft')}
+          {gauge('Max Altitude', fmt(maxAlt), 'm')}
           {gauge('Cycle', telemetry?.cycle ?? '—')}
         </div>
       </div>

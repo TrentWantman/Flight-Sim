@@ -66,9 +66,9 @@ public:
     Rocket(Bus& bus_, Integrator& integrator_, World& world_) 
         : orientation(), dryMass(1200000.0f), forward(0,0,1),
           fuelTank(), bus(bus_), engine(bus_, fuelTank),
-          integrator(integrator_), world(world_), state{0, 0, 0, 0, 0, 0, 5000000.0f} {}
+          integrator(integrator_), world(world_), state{0, 0, 6371000.0f, 0, 0, 0, 5000000.0f} {}
     
-    Rocket(Bus& bus_, Integrator& integrator_, World& world_, float throttle_, float fuel_, Vec3 startPos = Vec3(0,0,0), Vec3 startVel = Vec3(0,0,0), Vec3 startAccel = Vec3(0,0,0)) 
+    Rocket(Bus& bus_, Integrator& integrator_, World& world_, float throttle_, float fuel_, Vec3 startPos = Vec3(0,0,6371000), Vec3 startVel = Vec3(0,0,0), Vec3 startAccel = Vec3(0,0,0)) 
         : orientation(), dryMass(1200000.0f), forward(0,0,1),
         fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_),
         integrator(integrator_), world(world_), 
@@ -115,9 +115,22 @@ public:
         fuelTank.SetFuel(state[6] - dryMass);
 
         // ground collision clamp
-        if (state[2] <= 0.0f) {
-            state[2] = 0.0f;
-            if (state[5] < 0.0f) state[5] = 0.0f;
+        Vec3 pos(state[0], state[1], state[2]);
+        float r = pos.Magnitude();
+        if (r <= World::EARTH_RADIUS) {
+            Vec3 dir = pos.Normalize();
+            state[0] = dir.getX() * World::EARTH_RADIUS;
+            state[1] = dir.getY() * World::EARTH_RADIUS;
+            state[2] = dir.getZ() * World::EARTH_RADIUS;
+            // Kill radial velocity
+            Vec3 vel(state[3], state[4], state[5]);
+            float radialVel = vel.DotProduct(dir);
+            if (radialVel < 0) {
+                vel = vel - dir * radialVel;
+                state[3] = vel.getX();
+                state[4] = vel.getY();
+                state[5] = vel.getZ();
+            }
         }
     }
 
