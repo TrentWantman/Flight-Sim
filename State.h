@@ -4,7 +4,7 @@
 #include <array>
 
 //[px, py, pz, vx, vy, vz, mass] rocker state vector
-using State = std::array<float, 7>;
+using State = std::array<double, 7>;
 
 inline State operator+(const State& state, const State& b) {
     State result;
@@ -12,7 +12,7 @@ inline State operator+(const State& state, const State& b) {
     return result;
 }
 
-inline State operator*(const State& state, float s) {
+inline State operator*(const State& state, double s) {
     State result;
     for (size_t i = 0; i < state.size(); i++) result[i] = state[i] * s;
     return result;

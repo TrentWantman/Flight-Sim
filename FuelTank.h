@@ -3,22 +3,22 @@
 
 class FuelTank{
 private:
-    const float CAPACITY = 3800000;
-    float fuel;
+    const double CAPACITY = 3800000.0;
+    double fuel;
 
 public:
     FuelTank() : fuel(CAPACITY){}
-    
-    FuelTank(float fuel_) : fuel(fuel_){}
 
-    float GetFuel() const { return fuel; }
+    FuelTank(double fuel_) : fuel(fuel_){}
 
-    bool IsEmpty() const { return fuel <= 0.0f; }
+    double GetFuel() const { return fuel; }
 
-    float Consume(float amount){
+    bool IsEmpty() const { return fuel <= 0.0; }
+
+    double Consume(double amount){
         if (fuel <= 0) return 0;
         if (amount >= fuel) {
-            float consumed = fuel;
+            double consumed = fuel;
             fuel = 0;
             return consumed;
         }
@@ -26,8 +26,8 @@ public:
         return amount;
     }
 
-    void SetFuel(float f) { 
-        fuel = f < 0 ? 0 : f; 
+    void SetFuel(double f) {
+        fuel = f < 0 ? 0 : f;
     }
 };
 #endif

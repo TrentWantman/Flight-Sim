@@ -13,59 +13,62 @@
 #include <iostream>
 #include <algorithm>
 #include <sstream>
+#include <cmath>
 
 
 class FlightComputer {
 private:
     Bus& bus;
     LaunchSequence ls;
-    static constexpr float dt = 0.1f;
+    static constexpr double dt = 0.1;
+    static constexpr double EPSILON = 1e-6;
     PID landingPID;
     KalmanFilter1D kalman;
     WebSocketServer* wsServer = nullptr;
     bool gravityTurnStarted = false;
     bool ascentFollowStarted = false;
-    float lastMass = 5000000.0f;
+    double lastMass = 5000000.0;
     float lastOrientX = 0.0f;
     float lastOrientZ = 1.0f;
     Vec3 lastPosition;
     Vec3 lastVelocity;
     Vec3 lastAcceleration;
     bool gpsFresh = false;
-    static constexpr float Isp = 330.0f;
-    static constexpr float g0 = 9.80665f;
-    static constexpr float dryMass = 1200000.0f;
-    float gravityLoss = 0.0f;
+    static constexpr double Isp = 330.0;
+    static constexpr double g0 = 9.80665;
+    static constexpr double dryMass = 1200000.0;
+    double gravityLoss = 0.0;
 
 
 public:
     bool stopped = false;
 
     FlightComputer(Bus& bus_)
-        : bus(bus_), landingPID(0.02f, 0.0f, 0.0f) {}
+        : bus(bus_), landingPID(0.02, 0.0, 0.0) {}
 
     FlightComputer(Bus& bus_, LaunchSequence::State startState)
-        : bus(bus_), landingPID(0.02f, 0.0f, 0.0f) { 
+        : bus(bus_), landingPID(0.02, 0.0, 0.0) {
             ls.setState(startState);
         }
 
     void setWebSocketServer(WebSocketServer* s) { wsServer = s; }
 
-    float computeDeltaV() {
-        if (lastMass <= dryMass) return 0.0f;
+    double computeDeltaV() {
+        if (lastMass <= dryMass) return 0.0;
         return Isp * g0 * std::log(lastMass / dryMass);
     }
 
     void calculateGravityLoss() {
-        float mu = 3.986e14f;
-        float earthRadius = 6.371e6f;
-        float r = earthRadius + (computeAltitude(lastPosition));
-        float g = mu / (r * r);
+        double mu = 3.986e14;
+        double earthRadius = 6.371e6;
+        double r = earthRadius + computeAltitude(lastPosition);
+        double g = mu / (r * r);
         gravityLoss += g * dt;
     }
 
-    float computeAltitude(Vec3 pos){
-        return pos.Magnitude() - 6371000.0f;
+    double computeAltitude(Vec3 pos){
+        double px = pos.getX(), py = pos.getY(), pz = pos.getZ();
+        return std::sqrt(px*px + py*py + pz*pz) - 6371000.0;
     }
 
     void setThrottle(float throttle) {
@@ -74,10 +77,10 @@ public:
     }
 
     void updateKalman() {
-        kalman.Predict(lastAcceleration.getZ(), dt);
-        
+        kalman.Predict(static_cast<double>(lastAcceleration.getZ()), dt);
+
         if (gpsFresh) {
-            kalman.Update(lastPosition.getZ());
+            kalman.Update(static_cast<double>(lastPosition.getZ()));
         }
     }
 
@@ -90,7 +93,7 @@ public:
         }
         return lastPosition;
     }
-    
+
 
     Vec3 readVelocity() {
         float velX, velY, velZ;
@@ -108,9 +111,9 @@ public:
         return lastAcceleration;
     }
 
-    float readMass() {
+    double readMass() {
         float val;
-        if (bus.massChannel.read(val)) lastMass = val;
+        if (bus.massChannel.read(val)) lastMass = static_cast<double>(val);
         return lastMass;
     }
 
@@ -149,27 +152,27 @@ public:
             Vec3 velocity = readVelocity();
             Vec3 acceleation = readAcceleration();
             updateKalman();
-            float alt = computeAltitude(lastPosition);
-            float velZ = velocity.getZ();
-            float mass = readMass();
-            float deltaV = computeDeltaV();
+            double alt = computeAltitude(lastPosition);
+            double velZ = static_cast<double>(velocity.getZ());
+            double mass = readMass();
+            double deltaV = computeDeltaV();
             float orientX, orientZ;
             readOrientation(orientX, orientZ);
 
             if (ls.getState() == "LIFTOFF") {
                 calculateGravityLoss();
-                
-                if (alt >= 152.0f && !gravityTurnStarted) {
+
+                if (alt >= 152.0 && !gravityTurnStarted) {
                     setAttitudeMode(LIFTOFF_KICK);
                     gravityTurnStarted = true;
                 }
-                
+
                 if (gravityTurnStarted && !ascentFollowStarted && std::abs(velocity.getX()) > 1.5f) {
                     setAttitudeMode(ASCENT_FOLLOW_VELOCITY);
                     ascentFollowStarted = true;
                 }
-                
-                if (alt >= 366.0f) {
+
+                if (alt >= 366.0) {
                     ls.transition(ls.MAX_Q);
                     setThrottle(0.004f);
                 }
@@ -177,7 +180,7 @@ public:
             else if (ls.getState() == "MAX_Q") {
                 calculateGravityLoss();
 
-                if (alt >= 457.0f) {
+                if (alt >= 457.0) {
                     ls.transition(ls.MECO);
                     setThrottle(0.0f);
                 }
@@ -190,17 +193,17 @@ public:
                 }
             }
             else if (ls.getState() == "LANDING") {
-                if (alt <= 0.0) {
+                if (alt < EPSILON) {
                     ls.transition(ls.SAFED);
                     setThrottle(0.0f);
                 }
                 else {
-                    float targetVel = -0.05f * alt - 1.0f;
-                    float hoverThrottle = (9.8 * mass) / 70000000;
-                    float throttle = hoverThrottle + landingPID.Compute(targetVel, velZ, dt);
-                    if (throttle > 1.0f) throttle = 1.0f;
-                    if (throttle < 0.0f) throttle = 0.0f;                   
-                    setThrottle(throttle);
+                    double targetVel = -0.05 * alt - 1.0;
+                    double hoverThrottle = (9.8 * mass) / 70000000.0;
+                    double throttle = hoverThrottle + landingPID.Compute(targetVel, velZ, dt);
+                    if (throttle > 1.0) throttle = 1.0;
+                    if (throttle < 0.0) throttle = 0.0;
+                    setThrottle(static_cast<float>(throttle));
                 }
             }
             auto end = std::chrono::steady_clock::now();
@@ -222,7 +225,7 @@ public:
                     << " Orient X: " << orientX
                     << " Orient Z: " << orientZ
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
-                    
+
 
                 if (wsServer) {
                     std::ostringstream js;

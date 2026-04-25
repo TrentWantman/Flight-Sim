@@ -23,7 +23,7 @@ public:
         while (!stopped) {
             auto start = std::chrono::steady_clock::now();
 
-            bus.massChannel.write(voted(rocket.GetMass(), 0.01f));
+            bus.massChannel.write(static_cast<float>(voted(rocket.GetMass(), 0.01)));
             bus.massChannel.swapBuffers();
 
             std::this_thread::sleep_until(start + cycleTime);

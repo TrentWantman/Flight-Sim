@@ -5,7 +5,7 @@
 
 class EulerIntegrator : public Integrator {
 public:
-    State step(const State& current, DerivativeFn fn, float t, float dt) override {
+    State step(const State& current, DerivativeFn fn, double t, double dt) override {
         State derivative = fn(t, current);
         State next;
         for (size_t i = 0; i < current.size(); i++) {

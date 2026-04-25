@@ -9,13 +9,16 @@
 #include "Integrator.h"
 #include "World.h"
 #include "State.h"
+#include <cmath>
 
 class Rocket {
 private:
+    static constexpr double EPSILON = 1e-6;
+
     Bus& bus;
-    const float DRAG_COEFF = 0.3; //fix with real drag coefficent class later on? 
-    const float AREA = 70;
-    float dryMass;
+    const double DRAG_COEFF = 0.3; //fix with real drag coefficent class later on?
+    const double AREA = 70.0;
+    double dryMass;
     AttitudeMode currentMode = ATTITUDE_HOLD;
     Integrator& integrator;
     World& world;
@@ -23,7 +26,7 @@ private:
     Mat3x3 orientation;
     Vec3 forward;
     Vec3 lastAcceleration;
-    float currentTime = 0.0f;
+    double currentTime = 0.0;
 
     FuelTank fuelTank;
     Engine engine;
@@ -32,7 +35,7 @@ private:
         orientation = rotation * orientation;
     }
 
-    void SetThrottle(float t) { engine.SetThrottle(t); }
+    void SetThrottle(double t) { engine.SetThrottle(t); }
 
     void ApplyAttitudeMode() {
         switch (currentMode) {
@@ -63,18 +66,20 @@ private:
     }
 
 public:
-    Rocket(Bus& bus_, Integrator& integrator_, World& world_) 
-        : orientation(), dryMass(1200000.0f), forward(0,0,1),
+    Rocket(Bus& bus_, Integrator& integrator_, World& world_)
+        : orientation(), dryMass(1200000.0), forward(0,0,1),
           fuelTank(), bus(bus_), engine(bus_, fuelTank),
-          integrator(integrator_), world(world_), state{0, 0, 6371000.0f, 0, 0, 0, 5000000.0f} {}
-    
-    Rocket(Bus& bus_, Integrator& integrator_, World& world_, float throttle_, float fuel_, Vec3 startPos = Vec3(0,0,6371000), Vec3 startVel = Vec3(0,0,0), Vec3 startAccel = Vec3(0,0,0)) 
-        : orientation(), dryMass(1200000.0f), forward(0,0,1),
-        fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_),
-        integrator(integrator_), world(world_), 
-        state{startPos.getX(), startPos.getY(), startPos.getZ(), startVel.getX(), startVel.getY(), startVel.getZ(), 1200000.0f + fuel_} {}
+          integrator(integrator_), world(world_), state{0, 0, 6371000.0, 0, 0, 0, 5000000.0} {}
 
-    void Update(float dt) {
+    Rocket(Bus& bus_, Integrator& integrator_, World& world_, double throttle_, double fuel_, Vec3 startPos = Vec3(0,0,6371000), Vec3 startVel = Vec3(0,0,0), Vec3 startAccel = Vec3(0,0,0))
+        : orientation(), dryMass(1200000.0), forward(0,0,1),
+        fuelTank(fuel_), bus(bus_), engine(bus_, fuelTank, throttle_),
+        integrator(integrator_), world(world_),
+        state{startPos.getX(), startPos.getY(), startPos.getZ(),
+              startVel.getX(), startVel.getY(), startVel.getZ(),
+              dryMass + fuel_} {}
+
+    void Update(double dt) {
         engine.Update(dt);
 
         // Read attitude commands
@@ -85,29 +90,32 @@ public:
         ApplyAttitudeMode();
 
         Vec3 thrustDir = orientation * forward;
-        float thrust = engine.GetThrust();
-        float burnRate = engine.GetBurnRate();
-        float throttle = engine.GetThrottle();
-        float Cd = DRAG_COEFF;
-        float A = AREA;
+        double thrust = engine.GetThrust();
+        double burnRate = engine.GetBurnRate();
+        double throttle = engine.GetThrottle();
+        double Cd = DRAG_COEFF;
+        double A = AREA;
         World& w = world;
 
-        auto derivFn = [&](float t, const State& s) -> State {
+        auto derivFn = [&](double t, const State& s) -> State {
             Vec3 gravity = w.ComputeGravity(s);
             Vec3 drag = w.ComputeDrag(s, Cd, A);
-            Vec3 thrustForce = thrustDir * thrust;
-            float m = s[6];
+            Vec3 thrustForce = thrustDir * static_cast<float>(thrust);
+            double m = s[6];
 
-            Vec3 accel = (gravity + drag + thrustForce) * (1.0f / m);
-            float dmdt = -burnRate * throttle;
+            Vec3 totalForce = gravity + drag + thrustForce;
+            double ax = static_cast<double>(totalForce.getX()) / m;
+            double ay = static_cast<double>(totalForce.getY()) / m;
+            double az = static_cast<double>(totalForce.getZ()) / m;
+            double dmdt = -burnRate * throttle;
 
-            return {s[3], s[4], s[5],
-                    accel.getX(), accel.getY(), accel.getZ(),
-                    dmdt};
+            return {s[3], s[4], s[5], ax, ay, az, dmdt};
         };
 
         State currentDeriv = derivFn(currentTime, state);
-        lastAcceleration = Vec3(currentDeriv[3], currentDeriv[4], currentDeriv[5]);
+        lastAcceleration = Vec3(static_cast<float>(currentDeriv[3]),
+                                static_cast<float>(currentDeriv[4]),
+                                static_cast<float>(currentDeriv[5]));
 
         state = integrator.step(state, derivFn, currentTime, dt);
         currentTime += dt;
@@ -115,36 +123,44 @@ public:
         fuelTank.SetFuel(state[6] - dryMass);
 
         // ground collision clamp
-        Vec3 pos(state[0], state[1], state[2]);
-        float r = pos.Magnitude();
-        if (r <= World::EARTH_RADIUS) {
-            Vec3 dir = pos.Normalize();
-            state[0] = dir.getX() * World::EARTH_RADIUS;
-            state[1] = dir.getY() * World::EARTH_RADIUS;
-            state[2] = dir.getZ() * World::EARTH_RADIUS;
+        double px = state[0], py = state[1], pz = state[2];
+        double r = std::sqrt(px*px + py*py + pz*pz);
+        if (r <= World::EARTH_RADIUS + EPSILON) {
+            double invR = 1.0 / r;
+            double dirX = px * invR, dirY = py * invR, dirZ = pz * invR;
+            state[0] = dirX * World::EARTH_RADIUS;
+            state[1] = dirY * World::EARTH_RADIUS;
+            state[2] = dirZ * World::EARTH_RADIUS;
             // Kill radial velocity
-            Vec3 vel(state[3], state[4], state[5]);
-            float radialVel = vel.DotProduct(dir);
+            double vx = state[3], vy = state[4], vz = state[5];
+            double radialVel = vx*dirX + vy*dirY + vz*dirZ;
             if (radialVel < 0) {
-                vel = vel - dir * radialVel;
-                state[3] = vel.getX();
-                state[4] = vel.getY();
-                state[5] = vel.getZ();
+                state[3] = vx - dirX * radialVel;
+                state[4] = vy - dirY * radialVel;
+                state[5] = vz - dirZ * radialVel;
             }
         }
     }
 
-    float GetDragCoef() const { return DRAG_COEFF; }
+    double GetDragCoef() const { return DRAG_COEFF; }
 
-    float GetArea() const { return AREA; }
+    double GetArea() const { return AREA; }
 
-    float GetMass() const { return state[6]; }
+    double GetMass() const { return state[6]; }
 
-    float GetFuel() const { return fuelTank.GetFuel(); }
+    double GetFuel() const { return fuelTank.GetFuel(); }
 
-    Vec3 GetPosition() const { return Vec3(state[0], state[1], state[2]); }
+    Vec3 GetPosition() const {
+        return Vec3(static_cast<float>(state[0]),
+                    static_cast<float>(state[1]),
+                    static_cast<float>(state[2]));
+    }
 
-    Vec3 GetVelocity() const { return Vec3(state[3], state[4], state[5]); }
+    Vec3 GetVelocity() const {
+        return Vec3(static_cast<float>(state[3]),
+                    static_cast<float>(state[4]),
+                    static_cast<float>(state[5]));
+    }
 
     Vec3 GetAcceleration() const { return lastAcceleration; }
 

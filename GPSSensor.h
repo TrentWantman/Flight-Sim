@@ -15,7 +15,7 @@ private:
     const Rocket& rocket;
 
 public:
-    GPSSensor(const std::string& name_, Bus& bus_, const Rocket& rocket_) 
+    GPSSensor(const std::string& name_, Bus& bus_, const Rocket& rocket_)
         : SensorBase(name_, bus_), rocket(rocket_) {}
 
     void run() override {
@@ -26,12 +26,12 @@ public:
             Vec3 pos = rocket.GetPosition();
             Vec3 vel = rocket.GetVelocity();
 
-            bus.posXChannel.write(voted(pos.getX(), 0.01f)); bus.posXChannel.swapBuffers();
-            bus.posYChannel.write(voted(pos.getY(), 0.01f)); bus.posYChannel.swapBuffers();
-            bus.posZChannel.write(voted(pos.getZ(), 0.01f)); bus.posZChannel.swapBuffers();
-            bus.velXChannel.write(voted(vel.getX(), 0.01f)); bus.velXChannel.swapBuffers();
-            bus.velYChannel.write(voted(vel.getY(), 0.01f)); bus.velYChannel.swapBuffers();
-            bus.velZChannel.write(voted(vel.getZ(), 0.01f)); bus.velZChannel.swapBuffers();
+            bus.posXChannel.write(static_cast<float>(voted(pos.getX(), 0.01))); bus.posXChannel.swapBuffers();
+            bus.posYChannel.write(static_cast<float>(voted(pos.getY(), 0.01))); bus.posYChannel.swapBuffers();
+            bus.posZChannel.write(static_cast<float>(voted(pos.getZ(), 0.01))); bus.posZChannel.swapBuffers();
+            bus.velXChannel.write(static_cast<float>(voted(vel.getX(), 0.01))); bus.velXChannel.swapBuffers();
+            bus.velYChannel.write(static_cast<float>(voted(vel.getY(), 0.01))); bus.velYChannel.swapBuffers();
+            bus.velZChannel.write(static_cast<float>(voted(vel.getZ(), 0.01))); bus.velZChannel.swapBuffers();
 
             std::this_thread::sleep_until(start + cycleTime);
         }

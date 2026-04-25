@@ -3,20 +3,20 @@
 
 class PID {
 private:
-    float kp, ki, kd;
-    float prevError;
-    float integral;
+    double kp, ki, kd;
+    double prevError;
+    double integral;
 
 public:
-    PID(float kp_, float ki_, float kd_)
-        : kp(kp_), ki(ki_), kd(kd_), prevError(0.0f), integral(0.0f) {}
+    PID(double kp_, double ki_, double kd_)
+        : kp(kp_), ki(ki_), kd(kd_), prevError(0.0), integral(0.0) {}
 
-    float Compute(float target, float actual, float dt) {
-        float error = target - actual;
+    double Compute(double target, double actual, double dt) {
+        double error = target - actual;
         integral += error * dt;
-        float p = kp * error;
-        float i = ki * integral;
-        float d = kd * (error - prevError) / dt;
+        double p = kp * error;
+        double i = ki * integral;
+        double d = kd * (error - prevError) / dt;
         prevError = error;
         return p + i + d;
     }

@@ -26,9 +26,9 @@ public:
             Vec3 accel = rocket.GetAcceleration();
             Vec3 fwd = rocket.GetForwardDirection();
 
-            bus.accXChannel.write(voted(accel.getX(), 0.001f)); bus.accXChannel.swapBuffers();
-            bus.accYChannel.write(voted(accel.getY(), 0.001f)); bus.accYChannel.swapBuffers();
-            bus.accZChannel.write(voted(accel.getZ(), 0.001f)); bus.accZChannel.swapBuffers();
+            bus.accXChannel.write(static_cast<float>(voted(accel.getX(), 0.001))); bus.accXChannel.swapBuffers();
+            bus.accYChannel.write(static_cast<float>(voted(accel.getY(), 0.001))); bus.accYChannel.swapBuffers();
+            bus.accZChannel.write(static_cast<float>(voted(accel.getZ(), 0.001))); bus.accZChannel.swapBuffers();
             bus.orientXChannel.write(fwd.getX()); bus.orientXChannel.swapBuffers();
             bus.orientZChannel.write(fwd.getZ()); bus.orientZChannel.swapBuffers();
 
