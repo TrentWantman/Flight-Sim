@@ -33,6 +33,7 @@ private:
     Vec3 lastPosition;
     Vec3 lastVelocity;
     Vec3 lastAcceleration;
+    double lastThrottle = 0.0;
     bool gpsFresh = false;
     static constexpr double Isp = 330.0;
     static constexpr double g0 = 9.80665;
@@ -72,6 +73,7 @@ public:
     }
 
     void setThrottle(float throttle) {
+        lastThrottle = static_cast<double>(throttle);
         bus.throttleChannel.write(throttle);
         bus.throttleChannel.swapBuffers();
     }
@@ -124,6 +126,8 @@ public:
         ox = lastOrientX;
         oz = lastOrientZ;
     }
+
+    double getThrottleCommand() const { return lastThrottle; }
 
     void setAttitudeMode(AttitudeMode mode) {
         bus.attitudeChannel.write((float)mode);
@@ -241,7 +245,7 @@ public:
                         << ",\"orientZ\":" << orientZ
                         << ",\"deltaV\":" << deltaV
                         << ",\"gravityLoss\":" << gravityLoss
-                        << ",\"throttle\":" << bus.throttleChannel.reader[0]
+                        << ",\"throttle\":" << getThrottleCommand()
                         << ",\"mass\":" << mass << "}";
                     wsServer->broadcast(js.str());
                 }
