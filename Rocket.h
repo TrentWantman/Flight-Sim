@@ -43,22 +43,22 @@ private:
                 break;
 
             case LIFTOFF_KICK:
-                orientation = Mat3x3::RotateY(5.0f) * orientation;
+                orientation = Mat3x3::RotateY(5.0) * orientation;
                 currentMode = ATTITUDE_HOLD;
                 break;
 
             case ASCENT_FOLLOW_VELOCITY:
-                if (GetVelocity().Magnitude() > 10.0f) {
+                if (GetVelocity().Magnitude() > 10.0) {
                     // Compute pitch angle from velocity direction (2D approximation in x-z plane)
-                    float pitchDegrees = atan2(GetVelocity().getX(), GetVelocity().getZ()) * 180.0f / M_PI;
+                    double pitchDegrees = atan2(GetVelocity().getX(), GetVelocity().getZ()) * 180.0 / M_PI;
                     orientation = Mat3x3::RotateY(pitchDegrees);
                 }
                 break;
 
             case LANDING_RETROGRADE:
-                if (GetVelocity().Magnitude() > 1.0f) {
-                    Vec3 retrograde = GetVelocity() * -1.0f;
-                    float pitchDegrees = atan2(retrograde.getX(), retrograde.getZ()) * 180.0f / M_PI;
+                if (GetVelocity().Magnitude() > 1.0) {
+                    Vec3 retrograde = GetVelocity() * -1.0;
+                    double pitchDegrees = atan2(retrograde.getX(), retrograde.getZ()) * 180.0 / M_PI;
                     orientation = Mat3x3::RotateY(pitchDegrees);
                 }
                 break;
@@ -100,22 +100,20 @@ public:
         auto derivFn = [&](double t, const State& s) -> State {
             Vec3 gravity = w.ComputeGravity(s);
             Vec3 drag = w.ComputeDrag(s, Cd, A);
-            Vec3 thrustForce = thrustDir * static_cast<float>(thrust);
+            Vec3 thrustForce = thrustDir * thrust;
             double m = s[6];
 
             Vec3 totalForce = gravity + drag + thrustForce;
-            double ax = static_cast<double>(totalForce.getX()) / m;
-            double ay = static_cast<double>(totalForce.getY()) / m;
-            double az = static_cast<double>(totalForce.getZ()) / m;
+            double ax = totalForce.getX() / m;
+            double ay = totalForce.getY() / m;
+            double az = totalForce.getZ() / m;
             double dmdt = -burnRate * throttle;
 
             return {s[3], s[4], s[5], ax, ay, az, dmdt};
         };
 
         State currentDeriv = derivFn(currentTime, state);
-        lastAcceleration = Vec3(static_cast<float>(currentDeriv[3]),
-                                static_cast<float>(currentDeriv[4]),
-                                static_cast<float>(currentDeriv[5]));
+        lastAcceleration = Vec3(currentDeriv[3], currentDeriv[4], currentDeriv[5]);
 
         state = integrator.step(state, derivFn, currentTime, dt);
         currentTime += dt;
@@ -152,17 +150,9 @@ public:
 
     double GetFuel() const { return fuelTank.GetFuel(); }
 
-    Vec3 GetPosition() const {
-        return Vec3(static_cast<float>(state[0]),
-                    static_cast<float>(state[1]),
-                    static_cast<float>(state[2]));
-    }
+    Vec3 GetPosition() const { return Vec3(state[0], state[1], state[2]); }
 
-    Vec3 GetVelocity() const {
-        return Vec3(static_cast<float>(state[3]),
-                    static_cast<float>(state[4]),
-                    static_cast<float>(state[5]));
-    }
+    Vec3 GetVelocity() const { return Vec3(state[3], state[4], state[5]); }
 
     Vec3 GetAcceleration() const { return lastAcceleration; }
 

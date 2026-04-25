@@ -57,9 +57,7 @@ int main() {
             Vec3 pos = rocket.GetPosition();
             Vec3 vel = rocket.GetVelocity();
             Vec3 fwd = rocket.GetForwardDirection();
-            double px = static_cast<double>(pos.getX());
-            double py = static_cast<double>(pos.getY());
-            double pz = static_cast<double>(pos.getZ());
+            double px = pos.getX(), py = pos.getY(), pz = pos.getZ();
             double simAltitude = std::sqrt(px*px + py*py + pz*pz) - 6371000.0;
 
             std::ostringstream js;

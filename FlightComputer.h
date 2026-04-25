@@ -75,10 +75,10 @@ public:
     }
 
     void updateKalman() {
-        kalman.Predict(static_cast<double>(lastAcceleration.getZ()), dt);
+        kalman.Predict(lastAcceleration.getZ(), dt);
 
         if (gpsFresh) {
-            kalman.Update(static_cast<double>(lastPosition.getZ()));
+            kalman.Update(lastPosition.getZ());
         }
     }
 
@@ -151,7 +151,7 @@ public:
             Vec3 acceleation = readAcceleration();
             updateKalman();
             double alt = computeAltitude(lastPosition);
-            double velZ = static_cast<double>(velocity.getZ());
+            double velZ = velocity.getZ();
             double mass = readMass();
             double deltaV = computeDeltaV();
             float orientX, orientZ;
@@ -165,7 +165,7 @@ public:
                     gravityTurnStarted = true;
                 }
 
-                if (gravityTurnStarted && !ascentFollowStarted && std::abs(velocity.getX()) > 1.5f) {
+                if (gravityTurnStarted && !ascentFollowStarted && std::abs(velocity.getX()) > 1.5) {
                     setAttitudeMode(ASCENT_FOLLOW_VELOCITY);
                     ascentFollowStarted = true;
                 }
@@ -238,8 +238,8 @@ public:
     double getDeltaV() const { return computeDeltaV(); }
     double getGravityLoss() const { return gravityLoss; }
     double getAltitudeEstimate() const { return computeAltitude(lastPosition); }
-    double getVelZEstimate() const { return static_cast<double>(lastVelocity.getZ()); }
-    double getVelXEstimate() const { return static_cast<double>(lastVelocity.getX()); }
+    double getVelZEstimate() const { return lastVelocity.getZ(); }
+    double getVelXEstimate() const { return lastVelocity.getX(); }
     double getMassEstimate() const { return lastMass; }
     float getFswThrottle() const { return lastThrottle; }
 };

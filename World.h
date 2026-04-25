@@ -24,7 +24,7 @@ public:
         double fx = (px * factor) * mass;
         double fy = (py * factor) * mass;
         double fz = (pz * factor) * mass;
-        return Vec3(static_cast<float>(fx), static_cast<float>(fy), static_cast<float>(fz));
+        return Vec3(fx, fy, fz);
     }
 
     Vec3 ComputeDrag(const State& state, double Cd, double A) {
@@ -38,9 +38,7 @@ public:
         if (speed < 0.001) return Vec3(0, 0, 0);
         double dragMag = 0.5 * airDensity * speed * speed * Cd * A;
         double invSpeed = -dragMag / speed;
-        return Vec3(static_cast<float>(vx * invSpeed),
-                    static_cast<float>(vy * invSpeed),
-                    static_cast<float>(vz * invSpeed));
+        return Vec3(vx * invSpeed, vy * invSpeed, vz * invSpeed);
     }
 
     double GetAltitude(const State& state) {
