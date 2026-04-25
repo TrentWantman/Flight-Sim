@@ -7,7 +7,6 @@
 #include "KalmanFilter1D.h"
 #include "AttitudeMode.h"
 #include "Vec3.h"
-#include "WebSocketServer.h"
 #include <chrono>
 #include <thread>
 #include <iostream>
@@ -24,7 +23,6 @@ private:
     static constexpr double EPSILON = 1e-6;
     PID landingPID;
     KalmanFilter1D kalman;
-    WebSocketServer* wsServer = nullptr;
     bool gravityTurnStarted = false;
     bool ascentFollowStarted = false;
     double lastMass = 5000000.0;
@@ -52,9 +50,7 @@ public:
             ls.setState(startState);
         }
 
-    void setWebSocketServer(WebSocketServer* s) { wsServer = s; }
-
-    double computeDeltaV() {
+    double computeDeltaV() const {
         if (lastMass <= dryMass) return 0.0;
         return Isp * g0 * std::log(lastMass / dryMass);
     }
@@ -67,7 +63,7 @@ public:
         gravityLoss += g * dt;
     }
 
-    double computeAltitude(Vec3 pos){
+    double computeAltitude(Vec3 pos) const {
         double px = pos.getX(), py = pos.getY(), pz = pos.getZ();
         return std::sqrt(px*px + py*py + pz*pz) - 6371000.0;
     }
@@ -126,8 +122,6 @@ public:
         ox = lastOrientX;
         oz = lastOrientZ;
     }
-
-    double getThrottleCommand() const { return lastThrottle; }
 
     void setAttitudeMode(AttitudeMode mode) {
         bus.attitudeChannel.write((float)mode);
@@ -231,24 +225,6 @@ public:
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
 
 
-                if (wsServer) {
-                    std::ostringstream js;
-                    js << "{\"cycle\":" << cycle
-                        << ",\"state\":\"" << ls.getState() << "\""
-                        << ",\"posX\":" << pos.getX()
-                        << ",\"posZ\":" << pos.getZ()
-                        << ",\"altitude\":" << alt
-                        << ",\"velX\":" << velocity.getX()
-                        << ",\"velZ\":" << velocity.getZ()
-                        << ",\"velZ_filtered\":" << velZ
-                        << ",\"orientX\":" << orientX
-                        << ",\"orientZ\":" << orientZ
-                        << ",\"deltaV\":" << deltaV
-                        << ",\"gravityLoss\":" << gravityLoss
-                        << ",\"throttle\":" << getThrottleCommand()
-                        << ",\"mass\":" << mass << "}";
-                    wsServer->broadcast(js.str());
-                }
             }
 
             start = std::chrono::steady_clock::now();
@@ -257,6 +233,15 @@ public:
         std::cout << "All Cycles total=" << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startAllCycles).count() << "ms" << std::endl;
         stopped = true;
     }
+
+    std::string getState() const { return ls.getState(); }
+    double getDeltaV() const { return computeDeltaV(); }
+    double getGravityLoss() const { return gravityLoss; }
+    double getAltitudeEstimate() const { return computeAltitude(lastPosition); }
+    double getVelZEstimate() const { return static_cast<double>(lastVelocity.getZ()); }
+    double getVelXEstimate() const { return static_cast<double>(lastVelocity.getX()); }
+    double getMassEstimate() const { return lastMass; }
+    float getFswThrottle() const { return lastThrottle; }
 };
 
 #endif

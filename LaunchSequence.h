@@ -36,7 +36,7 @@ public:
         }
     }
 
-    std::string stateName(State s){
+    std::string stateName(State s) const {
         switch (s) {
             case IDLE : return "IDLE";
             case PRELAUNCH : return "PRELAUNCH";
@@ -55,7 +55,7 @@ public:
         currentState = s;
     }
 
-    std::string getState(){
+    std::string getState() const {
         return stateName(currentState);
     }
 };

@@ -5,8 +5,12 @@ const WS_URL = 'ws://localhost:9002'
 export default function App() {
   const [telemetry, setTelemetry] = useState(null)
   const [connected, setConnected] = useState(false)
-  const maxAltRef = useRef(1)
-  const [maxAlt, setMaxAlt] = useState(1)
+  const [view, setView] = useState('SIM')
+
+  const simMaxAltRef = useRef(1)
+  const fswMaxAltRef = useRef(1)
+  const [simMaxAlt, setSimMaxAlt] = useState(1)
+  const [fswMaxAlt, setFswMaxAlt] = useState(1)
   const rocketAngleRef = useRef(0)
 
   useEffect(() => {
@@ -26,13 +30,16 @@ export default function App() {
         try {
           const data = JSON.parse(e.data)
           setTelemetry(data)
-          if (data.altitude > maxAltRef.current) {
-            maxAltRef.current = data.altitude
-            setMaxAlt(data.altitude)
+          if (data.sim_altitude > simMaxAltRef.current) {
+            simMaxAltRef.current = data.sim_altitude
+            setSimMaxAlt(data.sim_altitude)
           }
-          // True orientation from the rocket's forward direction vector
-          if (data.orientX !== undefined && data.orientZ !== undefined) {
-            rocketAngleRef.current = Math.atan2(data.orientX, data.orientZ) * 180 / Math.PI
+          if (data.fsw_altitude > fswMaxAltRef.current) {
+            fswMaxAltRef.current = data.fsw_altitude
+            setFswMaxAlt(data.fsw_altitude)
+          }
+          if (data.sim_orientX !== undefined && data.sim_orientZ !== undefined) {
+            rocketAngleRef.current = Math.atan2(data.sim_orientX, data.sim_orientZ) * 180 / Math.PI
           }
         } catch (err) {
           console.error('bad telemetry:', err)
@@ -52,73 +59,67 @@ export default function App() {
   const viewH = 600
   const plotTop = 30
   const plotBottom = viewH - 20
-  const plotHeight = plotBottom - plotTop  // pixel height of plot
-  const tickMargin = 60                   // left space for altitude labels
+  const plotHeight = plotBottom - plotTop
+  const tickMargin = 60
   const plotLeft = tickMargin
   const plotRight = viewW - 10
   const plotWidth = plotRight - plotLeft
 
-  // --- Camera: unified scale, follows rocket in X and Z ---
+  // --- Camera ---
   const viewRangeFeet = 500
-  const scale = plotHeight / viewRangeFeet   // px per foot (same for both axes)
-  const hViewRangeFeet = plotWidth / scale   // horizontal feet visible
+  const scale = plotHeight / viewRangeFeet
+  const hViewRangeFeet = plotWidth / scale
 
-  const posX = telemetry?.posX ?? 0
-  const altitude = telemetry?.altitude ?? 0
-  const velX = telemetry?.velX ?? 0
-  const velZ = telemetry?.velZ ?? 0
-  const throttle = telemetry?.throttle ?? 0
-  const speed = Math.sqrt(velX ** 2 + velZ ** 2)
+  const isSim = view === 'SIM'
 
-  // Vertical camera: floor at 0 when low
+  const posX     = telemetry?.sim_posX ?? 0
+  const altitude = isSim ? (telemetry?.sim_altitude ?? 0) : (telemetry?.fsw_altitude ?? 0)
+  const velX     = isSim ? (telemetry?.sim_velX ?? 0)     : (telemetry?.fsw_velX ?? 0)
+  const velZ     = isSim ? (telemetry?.sim_velZ ?? 0)     : (telemetry?.fsw_velZ ?? 0)
+  const throttle = isSim ? (telemetry?.sim_throttle ?? 0) : (telemetry?.fsw_throttle ?? 0)
+  const speed    = Math.sqrt(velX ** 2 + velZ ** 2)
+  const maxAlt   = isSim ? simMaxAlt : fswMaxAlt
+
   const cameraBottomZ = Math.max(0, altitude - viewRangeFeet * 0.25)
-  const cameraTopZ = cameraBottomZ + viewRangeFeet
-
-  // Horizontal camera: keep launchpad (x=0) visible when close, pan when far
-  const cameraLeftX = Math.max(-hViewRangeFeet * 0.4, posX - hViewRangeFeet * 0.5)
-  const cameraRightX = cameraLeftX + hViewRangeFeet
+  const cameraTopZ    = cameraBottomZ + viewRangeFeet
+  const cameraLeftX   = Math.max(-hViewRangeFeet * 0.4, posX - hViewRangeFeet * 0.5)
+  const cameraRightX  = cameraLeftX + hViewRangeFeet
 
   const feetToSvgY = (z) => plotBottom - ((z - cameraBottomZ) * scale)
-  const feetToSvgX = (x) => plotLeft + ((x - cameraLeftX) * scale)
+  const feetToSvgX = (x) => plotLeft  + ((x - cameraLeftX)   * scale)
 
-  const rocketSvgX = feetToSvgX(posX)
-  const rocketSvgY = feetToSvgY(altitude)
-  const groundSvgY = feetToSvgY(0)
+  const rocketSvgX  = feetToSvgX(posX)
+  const rocketSvgY  = feetToSvgY(altitude)
+  const groundSvgY  = feetToSvgY(0)
   const groundVisible = groundSvgY <= plotBottom + 1
-  const padSvgX = feetToSvgX(0)
+  const padSvgX     = feetToSvgX(0)
 
-  // Rocket orientation (degrees clockwise from up)
   const rocketAngleDeg = rocketAngleRef.current
 
-  // Flame
-  const flameLen = throttle * 100
+  const flameLen   = throttle * 100
   const flameWidth = 4 + throttle * 10
 
-  // Velocity vector arrow (capped at 80px)
   const velArrowMaxPx = 80
-  const velArrowLen = Math.min(speed * 0.4, velArrowMaxPx)
+  const velArrowLen   = Math.min(speed * 0.4, velArrowMaxPx)
   const velNx = speed > 0.5 ? velX / speed : 0
   const velNz = speed > 0.5 ? velZ / speed : 0
-  // SVG direction: velX → +X, velZ → -Y
   const velArrowDx = velNx * velArrowLen
   const velArrowDy = -velNz * velArrowLen
 
-  // Altitude ticks (vertical, left side)
-  const vTickStep = niceStep(viewRangeFeet / 10)
+  const vTickStep  = niceStep(viewRangeFeet / 10)
   const vFirstTick = Math.ceil(cameraBottomZ / vTickStep) * vTickStep
   const vTicks = []
   for (let v = vFirstTick; v <= cameraTopZ; v += vTickStep) vTicks.push(v)
 
-  // Horizontal ticks (bottom edge)
-  const hTickStep = niceStep(hViewRangeFeet / 8)
+  const hTickStep  = niceStep(hViewRangeFeet / 8)
   const hFirstTick = Math.ceil(cameraLeftX / hTickStep) * hTickStep
   const hTicks = []
   for (let v = hFirstTick; v <= cameraRightX; v += hTickStep) hTicks.push(v)
 
   function niceStep(raw) {
     if (raw <= 0) return 1
-    const mag = Math.pow(10, Math.floor(Math.log10(raw)))
-    const n = raw / mag
+    const mag  = Math.pow(10, Math.floor(Math.log10(raw)))
+    const n    = raw / mag
     const pick = n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10
     return pick * mag
   }
@@ -145,14 +146,31 @@ export default function App() {
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ margin: 0, fontSize: 24 }}>Flight Sim Telemetry</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            width: 10, height: 10, borderRadius: '50%',
-            background: connected ? '#3fb950' : '#f85149'
-          }} />
-          <span style={{ fontSize: 13, color: '#8b98b8' }}>
-            {connected ? 'Connected' : 'Disconnected'}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* SIM / FSW toggle */}
+          <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid #3a4566' }}>
+            {['SIM', 'FSW'].map((v) => (
+              <button key={v} onClick={() => setView(v)} style={{
+                padding: '6px 20px',
+                fontSize: 13,
+                fontWeight: 600,
+                letterSpacing: 1,
+                cursor: 'pointer',
+                border: 'none',
+                background: view === v ? (v === 'SIM' ? '#3b82f6' : '#f59e0b') : '#151b2e',
+                color: view === v ? '#fff' : '#8b98b8',
+              }}>{v}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: connected ? '#3fb950' : '#f85149'
+            }} />
+            <span style={{ fontSize: 13, color: '#8b98b8' }}>
+              {connected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -161,16 +179,13 @@ export default function App() {
         <div style={{
           background: 'linear-gradient(to bottom, #0d1530 0%, #1a2540 70%, #2a3b5f 100%)',
           borderRadius: 8,
-          border: '1px solid #252d45',
+          border: `1px solid ${isSim ? '#1e3a5f' : '#3d2e10'}`,
           padding: 12
         }}>
           <svg width={viewW} height={viewH} viewBox={`0 0 ${viewW} ${viewH}`}>
             <defs>
               <clipPath id="plotArea">
                 <rect x={plotLeft} y={plotTop} width={plotWidth} height={plotHeight} />
-              </clipPath>
-              <clipPath id="aboveGround">
-                <rect x={plotLeft} y={plotTop} width={plotWidth} height={Math.max(0, groundSvgY - plotTop)} />
               </clipPath>
               <marker id="velArrowHead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
                 <path d="M0,0 L6,3 L0,6 Z" fill="#3fb950" />
@@ -208,13 +223,17 @@ export default function App() {
             <text x={5} y={plotTop - 8} fill="#8b98b8" fontSize={10}>Alt (m)</text>
             <text x={plotRight - 30} y={plotBottom + 18} fill="#8b98b8" fontSize={9}>X (m)</text>
 
+            {/* View badge */}
+            <text x={plotLeft + 8} y={plotTop + 16} fill={isSim ? '#3b82f6' : '#f59e0b'} fontSize={12} fontWeight="bold">
+              {isSim ? 'SIM' : 'FSW'}
+            </text>
+
             <g clipPath="url(#plotArea)">
-              {/* Ground strip (at altitude 0) */}
+              {/* Ground strip */}
               {groundVisible && (
                 <>
                   <rect x={plotLeft} y={groundSvgY} width={plotWidth} height={plotBottom - groundSvgY + 1} fill="#3d2e1f" />
                   <line x1={plotLeft} y1={groundSvgY} x2={plotRight} y2={groundSvgY} stroke="#6b4e2e" strokeWidth={2} />
-                  {/* Launch pad marker */}
                   {padSvgX >= plotLeft && padSvgX <= plotRight && (
                     <rect x={padSvgX - 12} y={groundSvgY - 3} width={24} height={3} fill="#555" rx={1} />
                   )}
@@ -232,33 +251,19 @@ export default function App() {
                 />
               )}
 
-              {/* Rocket — rotated by orientation */}
+              {/* Rocket */}
               <g transform={`translate(${rocketSvgX} ${rocketSvgY}) rotate(${rocketAngleDeg})`}>
-                {/* Flame */}
                 {throttle > 0 && (
                   <>
-                    <polygon
-                      points={`${-flameWidth},0 ${flameWidth},0 0,${flameLen}`}
-                      fill="#ff5722" opacity={0.9}
-                    />
-                    <polygon
-                      points={`${-flameWidth * 0.55},0 ${flameWidth * 0.55},0 0,${flameLen * 0.7}`}
-                      fill="#ffc107"
-                    />
-                    <polygon
-                      points={`${-flameWidth * 0.22},0 ${flameWidth * 0.22},0 0,${flameLen * 0.4}`}
-                      fill="#ffffff"
-                    />
+                    <polygon points={`${-flameWidth},0 ${flameWidth},0 0,${flameLen}`} fill="#ff5722" opacity={0.9} />
+                    <polygon points={`${-flameWidth * 0.55},0 ${flameWidth * 0.55},0 0,${flameLen * 0.7}`} fill="#ffc107" />
+                    <polygon points={`${-flameWidth * 0.22},0 ${flameWidth * 0.22},0 0,${flameLen * 0.4}`} fill="#ffffff" />
                   </>
                 )}
-                {/* Fins */}
                 <polygon points="-10,-10 -10,0 -18,0" fill="#8b98b8" />
                 <polygon points="10,-10 10,0 18,0" fill="#8b98b8" />
-                {/* Body (base at 0, top at -60) */}
                 <rect x={-10} y={-60} width={20} height={60} fill="#d8dce5" stroke="#8b98b8" strokeWidth={1} />
-                {/* Nose cone */}
                 <polygon points="-10,-60 10,-60 0,-80" fill="#e8ebf0" stroke="#8b98b8" strokeWidth={1} />
-                {/* Window */}
                 <circle cx={0} cy={-40} r={3} fill="#5ca0ff" />
               </g>
             </g>
@@ -268,16 +273,29 @@ export default function App() {
         {/* Gauges */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
           {gauge('State', telemetry?.state ?? '—')}
-          {gauge('Altitude', fmt(telemetry?.altitude), 'm')}
-          {gauge('Horizontal (X)', fmt(telemetry?.posX), 'm')}
-          {gauge('Vel Z', fmt(telemetry?.velZ), 'm/s')}
-          {gauge('Vel X', fmt(telemetry?.velX), 'm/s')}
-          {gauge('Speed', fmt(speed), 'm/s')}
-          {gauge('Throttle', fmt(throttle * 100), '%')}
-          {gauge('Mass', fmt(telemetry?.mass, 0), 'kg')}
-          {gauge('Delta-V', fmt(telemetry?.deltaV, 0), 'm/s')}
-          {gauge('Gravity Loss', fmt(telemetry?.gravityLoss, 1), 'm/s')}
-          {gauge('Max Altitude', fmt(maxAlt), 'm')}
+          {isSim ? (
+            <>
+              {gauge('Altitude', fmt(telemetry?.sim_altitude), 'm')}
+              {gauge('Horizontal X', fmt(telemetry?.sim_posX), 'm')}
+              {gauge('Vel Z', fmt(telemetry?.sim_velZ), 'm/s')}
+              {gauge('Vel X', fmt(telemetry?.sim_velX), 'm/s')}
+              {gauge('Speed', fmt(speed), 'm/s')}
+              {gauge('Throttle', fmt(throttle * 100), '%')}
+              {gauge('Mass', fmt(telemetry?.sim_mass, 0), 'kg')}
+              {gauge('Max Altitude', fmt(maxAlt), 'm')}
+            </>
+          ) : (
+            <>
+              {gauge('Altitude Estimate', fmt(telemetry?.fsw_altitude), 'm')}
+              {gauge('Vel Z Estimate', fmt(telemetry?.fsw_velZ), 'm/s')}
+              {gauge('Vel X Estimate', fmt(telemetry?.fsw_velX), 'm/s')}
+              {gauge('Throttle', fmt(throttle * 100), '%')}
+              {gauge('Mass Estimate', fmt(telemetry?.fsw_mass, 0), 'kg')}
+              {gauge('Delta-V', fmt(telemetry?.fsw_deltaV, 0), 'm/s')}
+              {gauge('Gravity Loss', fmt(telemetry?.fsw_gravityLoss, 1), 'm/s')}
+              {gauge('Max Alt Estimate', fmt(maxAlt), 'm')}
+            </>
+          )}
           {gauge('Cycle', telemetry?.cycle ?? '—')}
         </div>
       </div>

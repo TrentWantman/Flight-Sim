@@ -142,6 +142,8 @@ public:
         }
     }
 
+    double GetThrottle() const { return engine.GetThrottle(); }
+
     double GetDragCoef() const { return DRAG_COEFF; }
 
     double GetArea() const { return AREA; }
