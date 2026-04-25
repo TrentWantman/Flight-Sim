@@ -26,9 +26,9 @@ export default function App() {
         try {
           const data = JSON.parse(e.data)
           setTelemetry(data)
-          if (data.posZ > maxAltRef.current) {
-            maxAltRef.current = data.posZ
-            setMaxAlt(data.posZ)
+          if (data.altitude > maxAltRef.current) {
+            maxAltRef.current = data.altitude
+            setMaxAlt(data.altitude)
           }
           // True orientation from the rocket's forward direction vector
           if (data.orientX !== undefined && data.orientZ !== undefined) {
@@ -64,14 +64,14 @@ export default function App() {
   const hViewRangeFeet = plotWidth / scale   // horizontal feet visible
 
   const posX = telemetry?.posX ?? 0
-  const posZ = telemetry?.posZ ?? 0
+  const altitude = telemetry?.altitude ?? 0
   const velX = telemetry?.velX ?? 0
   const velZ = telemetry?.velZ ?? 0
   const throttle = telemetry?.throttle ?? 0
   const speed = Math.sqrt(velX ** 2 + velZ ** 2)
 
   // Vertical camera: floor at 0 when low
-  const cameraBottomZ = Math.max(0, posZ - viewRangeFeet * 0.25)
+  const cameraBottomZ = Math.max(0, altitude - viewRangeFeet * 0.25)
   const cameraTopZ = cameraBottomZ + viewRangeFeet
 
   // Horizontal camera: keep launchpad (x=0) visible when close, pan when far
@@ -82,7 +82,7 @@ export default function App() {
   const feetToSvgX = (x) => plotLeft + ((x - cameraLeftX) * scale)
 
   const rocketSvgX = feetToSvgX(posX)
-  const rocketSvgY = feetToSvgY(posZ)
+  const rocketSvgY = feetToSvgY(altitude)
   const groundSvgY = feetToSvgY(0)
   const groundVisible = groundSvgY <= plotBottom + 1
   const padSvgX = feetToSvgX(0)
@@ -268,7 +268,7 @@ export default function App() {
         {/* Gauges */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
           {gauge('State', telemetry?.state ?? '—')}
-          {gauge('Altitude (Z)', fmt(telemetry?.posZ), 'm')}
+          {gauge('Altitude', fmt(telemetry?.altitude), 'm')}
           {gauge('Horizontal (X)', fmt(telemetry?.posX), 'm')}
           {gauge('Vel Z', fmt(telemetry?.velZ), 'm/s')}
           {gauge('Vel X', fmt(telemetry?.velX), 'm/s')}
