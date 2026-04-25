@@ -20,7 +20,7 @@ I'm using this project to learn / implement the concepts that aerospace and flig
 - Orbital maneuvers: Hohmann transfers, phase angle calculations
 - Rendezvous: Clohessy-Wiltshire equations, relative motion dynamics
 - Proximity operations: approach trajectories, docking conditions
-- Coordinate frames: Earth-centered inertial, body-fixed, local orbital frames
+- Coordinate frames: ECI, ECEF, body-fixed, local orbital (LVLH), launch-site-local (ENU)
 - Guidance, Navigation, and Control (GNC): autonomous mission execution
 - HOOTL architecture: hardware-out-of-the-loop simulation
 
