@@ -35,6 +35,7 @@ private:
     static constexpr float Isp = 330.0f;
     static constexpr float g0 = 9.80665f;
     static constexpr float dryMass = 1200000.0f;
+    float gravityLoss = 0.0f;
 
 
 public:
@@ -53,6 +54,14 @@ public:
     float computeDeltaV() {
         if (lastMass <= dryMass) return 0.0f;
         return Isp * g0 * std::log(lastMass / dryMass);
+    }
+
+    void calculateGravityLoss() {
+        float mu = 3.986e14f;
+        float earthRadius = 6.371e6f;
+        float r = earthRadius + (kalman.GetAltitude() * 0.3048f);
+        float g = mu / (r * r);
+        gravityLoss += g * dt;
     }
 
     void setThrottle(float throttle) {
@@ -144,6 +153,8 @@ public:
             readOrientation(orientX, orientZ);
 
             if (ls.getState() == "LIFTOFF") {
+                calculateGravityLoss();
+                
                 if (alt >= 500.0f && !gravityTurnStarted) {
                     setAttitudeMode(LIFTOFF_KICK);
                     gravityTurnStarted = true;
@@ -160,6 +171,8 @@ public:
                 }
             }
             else if (ls.getState() == "MAX_Q") {
+                calculateGravityLoss();
+
                 if (alt >= 1500.0) {
                     ls.transition(ls.MECO);
                     setThrottle(0.0f);
@@ -201,6 +214,7 @@ public:
                     << " Throttle: " << bus.throttleChannel.reader[0]
                     << " Mass: " << mass
                     << " DeltaV: " << deltaV << " m/s"
+                    << " GravityLoss: " << gravityLoss << " m/s"
                     << " Orient X: " << orientX
                     << " Orient Z: " << orientZ
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
@@ -219,6 +233,7 @@ public:
                         << ",\"orientX\":" << orientX
                         << ",\"orientZ\":" << orientZ
                         << ",\"deltaV\":" << deltaV
+                        << ",\"gravityLoss\":" << gravityLoss
                         << ",\"throttle\":" << bus.throttleChannel.reader[0]
                         << ",\"mass\":" << mass << "}";
                     wsServer->broadcast(js.str());
