@@ -32,6 +32,9 @@ private:
     Vec3 lastVelocity;
     Vec3 lastAcceleration;
     bool gpsFresh = false;
+    static constexpr float Isp = 330.0f;
+    static constexpr float g0 = 9.80665f;
+    static constexpr float dryMass = 1200000.0f;
 
 
 public:
@@ -46,6 +49,11 @@ public:
         }
 
     void setWebSocketServer(WebSocketServer* s) { wsServer = s; }
+
+    float computeDeltaV() {
+        if (lastMass <= dryMass) return 0.0f;
+        return Isp * g0 * std::log(lastMass / dryMass);
+    }
 
     void setThrottle(float throttle) {
         bus.throttleChannel.write(throttle);
@@ -131,6 +139,7 @@ public:
             float alt = kalman.GetAltitude();
             float velZ = kalman.GetVelocity();
             float mass = readMass();
+            float deltaV = computeDeltaV();
             float orientX, orientZ;
             readOrientation(orientX, orientZ);
 
@@ -191,6 +200,7 @@ public:
                     << " Velocity: (" << velocity.getX() << ", " << velocity.getY() << ", " << velZ << ") ft/sec"
                     << " Throttle: " << bus.throttleChannel.reader[0]
                     << " Mass: " << mass
+                    << " DeltaV: " << deltaV << " m/s"
                     << " Orient X: " << orientX
                     << " Orient Z: " << orientZ
                     << " work=" << elapsed.count() << "ms total=" << totalCycle.count() << "ms" << std::endl;
@@ -208,6 +218,7 @@ public:
                         << ",\"velZ_filtered\":" << velZ
                         << ",\"orientX\":" << orientX
                         << ",\"orientZ\":" << orientZ
+                        << ",\"deltaV\":" << deltaV
                         << ",\"throttle\":" << bus.throttleChannel.reader[0]
                         << ",\"mass\":" << mass << "}";
                     wsServer->broadcast(js.str());

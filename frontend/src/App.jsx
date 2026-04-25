@@ -275,6 +275,7 @@ export default function App() {
           {gauge('Speed', fmt(speed), 'ft/s')}
           {gauge('Throttle', fmt(throttle * 100), '%')}
           {gauge('Mass', fmt(telemetry?.mass, 0), 'kg')}
+          {gauge('Delta-V', fmt(telemetry?.deltaV, 0), 'm/s')}
           {gauge('Max Altitude', fmt(maxAlt), 'ft')}
           {gauge('Cycle', telemetry?.cycle ?? '—')}
         </div>
